@@ -3,11 +3,10 @@
 [![Source Code License](https://img.shields.io/badge/license-GPL-blueviolet)](https://github.com/afrakilic/BTN-Kernel-Machines/blob/main/LICENSE)
 
 
-This repository contains the source code used to produce the results obtained in [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection](https://arxiv.org/abs/2409.12789) submitted to [Journal of Machine Learning Research](https://www.jmlr.org/). This project sets fixed random seeds to promote reproducibility. All experiments were conducted on the following machine:
+This repository contains the source code used to produce the results obtained in [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection](https://arxiv.org/abs/2409.12789) submitted to [Journal of Machine Learning Research](https://www.jmlr.org/). This project sets fixed random seeds to promote reproducibility. All experiments were conducted on the following computer:
 
 - **Device**: MacBook Pro (Model Identifier: Mac14,9)
-- **Model Number**: MPHE3N/A
-- **Chip**: Apple M2 Pro (10 cores: 6 performance + 4 efficiency)
+- **Chip**: Apple M2 Pro 
 - **Memory**: 16 GB LPDDR5
 - **Operating System**: macOS 15.5 (Build 24F74)
 
