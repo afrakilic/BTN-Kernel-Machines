@@ -106,7 +106,7 @@ for it in range(100):
             order="F",
         )
 
-        WSigma_D[d] = np.linalg.inv(
+        WSigma_D[d] = np.linalg.pinv(
             tau * (cc + V_temp)
             + np.kron(lambda_R * np.eye(Rmax), lambda_M[d] * np.eye(Imax))
         )
