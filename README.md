@@ -3,7 +3,16 @@
 [![Source Code License](https://img.shields.io/badge/license-GPL-blueviolet)](https://github.com/afrakilic/BTN-Kernel-Machines/blob/main/LICENSE)
 
 
-This repository contains the source code used to produce the results obtained in [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection](https://arxiv.org/abs/2409.12789) submitted to [Journal of Machine Learning Research](https://www.jmlr.org/).
+This repository contains the source code used to produce the results obtained in [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection](https://arxiv.org/abs/2409.12789) submitted to [Journal of Machine Learning Research](https://www.jmlr.org/). This project sets fixed random seeds to promote reproducibility. All experiments were conducted on the following machine:
+
+- **Device**: MacBook Pro (Model Identifier: Mac14,9)
+- **Model Number**: MPHE3N/A
+- **Chip**: Apple M2 Pro (10 cores: 6 performance + 4 efficiency)
+- **Memory**: 16 GB LPDDR5
+- **Operating System**: macOS 15.5 (Build 24F74)
+
+However, please note that some computations may still yield slightly different results across operating systems (e.g., macOS vs Windows), hardware architectures, or Python library versions.
+
 
 In this work we propose a fully probabilistic framework that uses sparsity-inducing hierarchical priors on Tensor Network factors to automatically infer tensor rank and feature dimensions, while also identifying the most relevant features for prediction, thereby enhancing model interpretability.
 
@@ -39,17 +48,17 @@ pip install -r requirements.txt
 
 The repository code is structured in the following way
 
-- **`agents`** contains the classes defined for RL agents.
-- **`data`** contains weather disturbance data.
-- **`greenhouse`** contains the model and environments classes for the greenhouse system.
-- **`mpcs`** contains the classes for all mpc controllers.
-- **`sims/configs`** contains configuration files for simulations.
-- **`utils`** contains plotting and evalation scripts used to generate images and data used in Reinforcement Learning-Based Model Predicitive Control for Greenhouse Climate Control
-- **`nominal_greenhouse.py`** simulates the nominal mpc controller.
-- **`sample_greenhouse.py`** simulates the sample based mpc controller.
-- **`q_learning_greenhouse.py`** trains the RL-based mpc controller.
-- **`train_ddpg.py`** trains the DDPG-based RL controller.
-- **`visualization.py`** vizualizes data saved from simulations.
+- **`data/`**  
+  Contains all the UCI benchmark datasets used in the experiments.
+
+- **`figure_and_tables/`**  
+  Includes the code for running experiments that generate the figures and tables shown in **Section 4** of the paper, **except for Table 4**.
+
+- **`empirical_study/`**  
+  Contains the experiments described in **Section 4.4**, which are reported in **Table 4**.
+
+- **`functions/`**  
+  Includes the implementation of **Bayesian Tensor Network Kernel Machines (BTN-KM)** and helper functions organized in the `utils` module.
 ## License
 
 The repository is provided under the GNU General Public License. See the [LICENSE](https://github.com/afrakilic/BTN-Kernel-Machines/blob/main/LICENSE) file included with this repository.
