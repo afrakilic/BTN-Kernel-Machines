@@ -4,6 +4,7 @@ Dependencies and configurations are centralized in `config.py`.
 """
 
 import os, sys
+
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
 import numpy as np
@@ -53,7 +54,6 @@ def columnwise_kronecker(A, B):
         K[:, i] = np.kron(A[:, i], B[:, i])
 
     return K
-
 
 
 def dotkron(*matrices):
@@ -109,12 +109,10 @@ def temp(
     return dotkron(Phi, Phi) @ result
 
 
-
-
 def dotkronX(A, B, y):
     """
     Computes the Kronecker dot product for large matrices using batch processing.
-    
+
     Parameters:
     A : np.ndarray (N, DA)
         First input matrix
@@ -124,7 +122,7 @@ def dotkronX(A, B, y):
         Target vector
     batch_size : int, optional
         Number of samples to process in each batch (default is 10000)
-    
+
     Returns:
     CC : np.ndarray (DA*DB, DA*DB)
         Computed Kronecker product matrix
@@ -133,22 +131,23 @@ def dotkronX(A, B, y):
     """
     N, DA = A.shape
     _, DB = B.shape
-    
+
     CC = np.zeros((DA * DB, DA * DB))
     Cy = np.zeros((DA * DB, 1))
     y = y.reshape(-1, 1)  # Ensure y has shape (N, 1)
 
-    batch_size=10000
+    batch_size = 10000
     for n in range(0, N, batch_size):
-        idx = min(n + batch_size -1, N)  # Ensure we don't exceed N
-        
-        temp =  (np.tile(A[n:idx, :], (1, DB))) * (np.kron(B[n:idx, :], np.ones((1, DA))))
-        
+        idx = min(n + batch_size - 1, N)  # Ensure we don't exceed N
+
+        temp = (np.tile(A[n:idx, :], (1, DB))) * (
+            np.kron(B[n:idx, :], np.ones((1, DA)))
+        )
+
         CC += temp.T @ temp  # Accumulate Kronecker product
         Cy += temp.T @ y[n:idx, :]
-    
-    return CC, Cy
 
+    return CC, Cy
 
 
 def safe_division(X, A, epsilon=1):
@@ -156,6 +155,6 @@ def safe_division(X, A, epsilon=1):
     Y = X / A_safe
     return Y
 
+
 def safelog(x):
     return np.log(np.clip(x, 1e-10, 1e10))  # x to range [1e-10, 1e10]
-

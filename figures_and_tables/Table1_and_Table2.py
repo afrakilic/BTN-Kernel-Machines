@@ -1,24 +1,20 @@
-
-
-
-
 """
-This script generates results for Table 1 and Table 2, analyzing the effect of initial maximum rank 
+This script generates results for Table 1 and Table 2, analyzing the effect of initial maximum rank
 (R_max) on the BTN-Kernel machines' predictive performance and effective rank.
 
 Experiments are conducted on three benchmark regression datasets, each evaluated over 10 random splits.
 
-For a fixed input feature dimension (D=20), the model is trained with three different rank settings 
+For a fixed input feature dimension (D=20), the model is trained with three different rank settings
 (R_max = 10, 25, 50) while adapting hyperparameters for both rank- and input-dimension-specific precisions.
 
-Metrics reported include RMSE, negative log-likelihood (NLL), and the effective rank (R_eff), averaged 
+Metrics reported include RMSE, negative log-likelihood (NLL), and the effective rank (R_eff), averaged
 across trials to assess model accuracy and complexity control as a function of rank initialization.
 
 This evaluation highlights how varying initial model capacity affects generalization and rank sparsity.
 """
 
-
 import os, sys, pprint
+
 sys.path.append(os.getcwd())
 from config import *  # Import everything from config.py
 from functions.BTN_KM import btnkm
@@ -31,7 +27,10 @@ max_rank = np.array([10, 25, 50])
 num_trials = 10
 
 # Collect metrics
-results = {title: {r: {"rmse": [], "nll": [], "r_eff": []} for r in max_rank} for title in titles}
+results = {
+    title: {r: {"rmse": [], "nll": [], "r_eff": []} for r in max_rank}
+    for title in titles
+}
 
 for dataset_idx, dataset_name in enumerate(datasets):
     df = pd.read_csv(f"data/{dataset_name}", header=None)
@@ -58,8 +57,8 @@ for dataset_idx, dataset_name in enumerate(datasets):
 
         for i, r in enumerate(max_rank):
             a, b = 1e-3, 1e-3
-            c, d = 1e-5*np.ones(r), 1e-6*np.ones(r)
-            g, h = 1e-6*np.ones(input_dimension), 1e-6*np.ones(input_dimension)
+            c, d = 1e-5 * np.ones(r), 1e-6 * np.ones(r)
+            g, h = 1e-6 * np.ones(input_dimension), 1e-6 * np.ones(input_dimension)
 
             model = btnkm(X_train.shape[1])
             _, _, _, _, _, R_values, _ = model.train(
@@ -78,15 +77,20 @@ for dataset_idx, dataset_name in enumerate(datasets):
                 lambda_R_update=True,
                 lambda_M_update=True,
                 plot_results=False,
-                prune_rank=True
+                prune_rank=True,
             )
 
-            pred_mean, pred_std, _ = model.predict(features=X_test, input_dimension=input_dimension)
+            pred_mean, pred_std, _ = model.predict(
+                features=X_test, input_dimension=input_dimension
+            )
             pred_mean = pred_mean * y_std + y_mean
             pred_std = pred_std * y_std
 
             rmse = np.sqrt(np.mean((pred_mean - y_test) ** 2))
-            nll = np.mean(0.5 * np.log(2 * np.pi * pred_std**2) + 0.5 * ((y_test - pred_mean)**2) / (pred_std**2))
+            nll = np.mean(
+                0.5 * np.log(2 * np.pi * pred_std**2)
+                + 0.5 * ((y_test - pred_mean) ** 2) / (pred_std**2)
+            )
             r_eff = R_values[-1]
 
             title = titles[dataset_idx]
@@ -106,7 +110,7 @@ for title in titles:
         summary[title][r] = {
             "RMSE": f"{np.mean(rmse_vals):.3f} ± {np.std(rmse_vals):.3f}",
             "NLL": f"{np.mean(nll_vals):.3f} ± {np.std(nll_vals):.3f}",
-            "R_eff": f"{np.mean(r_vals):.1f} ± {np.std(r_vals):.1f}"
+            "R_eff": f"{np.mean(r_vals):.1f} ± {np.std(r_vals):.1f}",
         }
 
 pprint.pprint(summary)
