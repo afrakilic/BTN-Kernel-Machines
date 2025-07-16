@@ -18,7 +18,14 @@ In this work we propose a fully probabilistic framework that uses sparsity-induc
 If you find the paper or this repository helpful in your publications, please consider citing it.
 
 ```bibtex
-@article{
+@misc{kilic2025interpretablebayesiantensornetwork,
+      title={Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection}, 
+      author={Afra Kilic and Kim Batselier},
+      year={2025},
+      eprint={2507.11136},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML},
+      url={https://arxiv.org/abs/2507.11136}, 
 }
 ```
 
