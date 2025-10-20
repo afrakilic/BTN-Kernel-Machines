@@ -1,0 +1,13 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code settings
+.vscode/
+
+# Data, logs, plots, or scratch files
+data/
+*.csv
+*.log
+*.tmp
+plots/
