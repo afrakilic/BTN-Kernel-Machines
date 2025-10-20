@@ -166,10 +166,10 @@ class btnkm:
                 A = tau * (cc + V_temp) + np.kron(
                     lambda_R * np.eye(R), lambda_M[d] * np.eye(I)
                 )
-                try:
-                    WSigma_D[d] = np.linalg.inv(A)
-                except np.linalg.LinAlgError:
-                    WSigma_D[d] = np.linalg.pinv(A)
+                # try:
+                #     WSigma_D[d] = np.linalg.inv(A)
+                # except np.linalg.LinAlgError:
+                WSigma_D[d] = np.linalg.pinv(A)
 
                 W_D[d] = np.reshape((tau * WSigma_D[d] @ cy), (I, R), order="F")
 
@@ -458,9 +458,12 @@ class btnkm:
             for i in range(len(W_K)):
                 hadamard_product *= Phi_K[i] @ W_K[i]
             x = columnwise_kronecker(Phi[d].T, hadamard_product.T)
-            sum_matrix += x.T @ self.V[d] @ x
+            xVx = x.T @ self.V[d] @ x
+            TxVx = np.trace(xVx)
+            S_normalized = (xVx) / (TxVx if TxVx != 0 else 1.0)
+            sum_matrix += S_normalized
 
-        S = (2 * self.a / (2 * self.a - 2)) * (self.b / self.a) * sum_matrix
+        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + sum_matrix)
         std_dev = np.sqrt(np.diag(S))  # Standard deviation for each prediction
         if true_values is not None:
             if classification:
