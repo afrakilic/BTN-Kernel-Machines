@@ -284,55 +284,55 @@ class btnkm:
             rankest = R
 
             # Rank pruning (optional)
-            if it > 2:
-                if prune_rank:
-                    Wall = np.vstack([W for W in W_D])
-                    comPower = np.diag(Wall.T @ Wall)
-                    var_explained = comPower / np.sum(comPower) * 100
-                    rankest = np.sum(var_explained > rank_tol)
-                    if np.max(rankest) == 0:
-                        print("Rank becomes 0 !!!")
-                        break
-                    if R != np.max(rankest):
-                        indices = var_explained > rank_tol
-                        false_indices = np.where(~indices)[0]
-                        lambda_R = np.delete(lambda_R, false_indices)
-                        for d in range(D):
-                            W_D[d] = np.delete(W_D[d], false_indices, axis=1)
-                            ranges = np.r_[
-                                [
-                                    np.arange(
-                                        I * false_indices[i], I * false_indices[i] + I
-                                    )
-                                    for i in range(len(false_indices))
-                                ]
+
+            if prune_rank and it>5:
+                Wall = np.vstack([W for W in W_D])
+                comPower = np.diag(Wall.T @ Wall)
+                var_explained = comPower / np.sum(comPower) * 100
+                rankest = np.sum(var_explained > rank_tol)
+                if np.max(rankest) == 0:
+                    print("Rank becomes 0 !!!")
+                    break
+                if R != np.max(rankest):
+                    indices = var_explained > rank_tol
+                    false_indices = np.where(~indices)[0]
+                    lambda_R = np.delete(lambda_R, false_indices)
+                    for d in range(D):
+                        W_D[d] = np.delete(W_D[d], false_indices, axis=1)
+                        ranges = np.r_[
+                            [
+                                np.arange(
+                                    I * false_indices[i], I * false_indices[i] + I
+                                )
+                                for i in range(len(false_indices))
                             ]
-                            WSigma_D[d] = np.delete(WSigma_D[d], ranges, axis=1)
-                            WSigma_D[d] = np.delete(WSigma_D[d], ranges, axis=0)
+                        ]
+                        WSigma_D[d] = np.delete(WSigma_D[d], ranges, axis=1)
+                        WSigma_D[d] = np.delete(WSigma_D[d], ranges, axis=0)
 
-                        hadamard_product_mean = np.delete(
-                            hadamard_product_mean, false_indices, axis=1
-                        )
+                    hadamard_product_mean = np.delete(
+                        hadamard_product_mean, false_indices, axis=1
+                    )
 
-                        row_indices = {
-                            (r - 1) * R + j
-                            for r in false_indices + 1
-                            for j in range(1, R + 1)
-                        }
-                        col_indices = {
-                            (i - 1) * R + c
-                            for c in false_indices + 1
-                            for i in range(1, R + 1)
-                        }
-                        removed = sorted(row_indices | col_indices)
-                        removed = np.array(sorted(row_indices | col_indices)) - 1
-                        hadamard_product_V = np.delete(
-                            hadamard_product_V, removed, axis=1
-                        )
-                        c0 = c0[:rankest]
-                        d0 = d0[:rankest]
+                    row_indices = {
+                        (r - 1) * R + j
+                        for r in false_indices + 1
+                        for j in range(1, R + 1)
+                    }
+                    col_indices = {
+                        (i - 1) * R + c
+                        for c in false_indices + 1
+                        for i in range(1, R + 1)
+                    }
+                    removed = sorted(row_indices | col_indices)
+                    removed = np.array(sorted(row_indices | col_indices)) - 1
+                    hadamard_product_V = np.delete(
+                        hadamard_product_V, removed, axis=1
+                    )
+                    c0 = c0[:rankest]
+                    d0 = d0[:rankest]
 
-                        R = np.max(rankest)
+                    R = np.max(rankest)
 
             R_values.append(R)
 
