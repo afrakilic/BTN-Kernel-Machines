@@ -73,8 +73,6 @@ class btnkm:
         plot_results: bool = True,
         classification: bool = False,
     ) -> None:
-        # TODO doc string
-        # Set a seed for reproducibility
         np.random.seed(seed)
         I = input_dimension
         R = max_rank
@@ -166,10 +164,10 @@ class btnkm:
                 A = tau * (cc + V_temp) + np.kron(
                     lambda_R * np.eye(R), lambda_M[d] * np.eye(I)
                 )
-                # try:
-                #     WSigma_D[d] = np.linalg.inv(A)
-                # except np.linalg.LinAlgError:
-                WSigma_D[d] = np.linalg.pinv(A)
+                try:
+                    WSigma_D[d] = np.linalg.inv(A)
+                except np.linalg.LinAlgError:
+                    WSigma_D[d] = np.linalg.pinv(A)
 
                 W_D[d] = np.reshape((tau * WSigma_D[d] @ cy), (I, R), order="F")
 
@@ -285,7 +283,7 @@ class btnkm:
 
             # Rank pruning (optional)
 
-            if prune_rank and it>5:
+            if prune_rank:
                 Wall = np.vstack([W for W in W_D])
                 comPower = np.diag(Wall.T @ Wall)
                 var_explained = comPower / np.sum(comPower) * 100

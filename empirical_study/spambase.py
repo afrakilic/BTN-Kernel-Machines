@@ -27,7 +27,7 @@ y = np.where(y > 0, 1, -1)
 
 # hyper-parameters
 input_dimension = 30
-max_rank = 25
+max_rank = 10
 
 a, b = 1e-2, 1e-3
 c, d = 1e-5 * np.ones(max_rank), 1e-6 * np.ones(max_rank)
@@ -122,7 +122,7 @@ print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 # input_dimension = 30
 # # max_rank = 25
-# Total runtime for 10 runs: 3785.66 seconds
-# Mean Missclassication: 0.07462039045553145, Standard Deviation of Missclassication: 0.014718607768926126
-# Mean Effective R: 8.6, std: 1.2
-# Mean NLL: 0.4991748394689689, std_nll: 0.04722475764046458
+# Total runtime for 10 runs: 1860.05 seconds
+# Mean Missclassication: 0.05965292841648588, Standard Deviation of Missclassication: 0.0065973563235338425
+# Mean Effective R: 4.2, std: 1.077032961426901
+# Mean NLL: 0.19223506133446136, std_nll: 0.04173532734014695 
