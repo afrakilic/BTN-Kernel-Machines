@@ -448,6 +448,8 @@ class btnkm:
         # Uncertainty quantification
         N = features.shape[0]
         R = self.W_D[0].shape[1]
+        M = input_dimension
+        D = len(self.W_D)
         sum_matrix = 0
         for d in range(len(self.W_D)):
             W_K = [W for idx, W in enumerate(self.W_D) if idx != d]
@@ -457,11 +459,9 @@ class btnkm:
                 hadamard_product *= Phi_K[i] @ W_K[i]
             x = columnwise_kronecker(Phi[d].T, hadamard_product.T)
             xVx = x.T @ self.V[d] @ x
-            TxVx = np.trace(xVx)
-            S_normalized = (xVx) / (TxVx if TxVx != 0 else 1.0)
-            sum_matrix += S_normalized
+            sum_matrix += xVx
 
-        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + sum_matrix)
+        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (sum_matrix/(D*M*R)))
         std_dev = np.sqrt(np.diag(S))  # Standard deviation for each prediction
         if true_values is not None:
             if classification:

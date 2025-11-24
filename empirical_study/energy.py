@@ -118,8 +118,8 @@ print(f"Effective R: {effective_r}, std: {effective_r_std}")
 # REPORTED
 # input_dimension = 20
 # # max_rank = 50
-# Total runtime for 10 runs: 115.11 seconds
-# Mean RMSE: 0.4955047760642476, Standard Deviation of RMSE: 0.1431827002928861
-# Mean NLL : 1.9824802669810595, Standard Deviation of NLL: 0.03577574402826028
+# Total runtime for 10 runs: 57.00 seconds
+# Mean RMSE: 0.49550474389401866, Standard Deviation of RMSE: 0.143182725282354
+# Mean NLL : 1.5287726696278263, Standard Deviation of NLL: 0.27906834896739774
 # Effective R: 10.1, std: 1.3
 # ############################################################

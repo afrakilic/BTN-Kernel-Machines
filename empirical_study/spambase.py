@@ -122,7 +122,7 @@ print(f"Mean NLL: {mean_nll}, std_nll: {std_nll} ")
 
 # input_dimension = 30
 # # max_rank = 25
-# Total runtime for 10 runs: 1860.05 seconds
+# Total runtime for 10 runs: 2209.05 seconds
 # Mean Missclassication: 0.05965292841648588, Standard Deviation of Missclassication: 0.0065973563235338425
 # Mean Effective R: 4.2, std: 1.077032961426901
-# Mean NLL: 0.19223506133446136, std_nll: 0.04173532734014695 
+# Mean NLL: 0.22792412241610469, std_nll: 0.054186512095622585 
