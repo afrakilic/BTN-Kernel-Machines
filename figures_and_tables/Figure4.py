@@ -138,5 +138,5 @@ fig.legend(
 )
 plt.tight_layout(rect=[0, 0, 0.9, 1])
 plt.subplots_adjust(wspace=0.5, hspace=0.3)
-# plt.savefig("plot2.pdf", format='pdf', bbox_inches='tight')
+plt.savefig("plot2.pdf", format='pdf', bbox_inches='tight')
 plt.show()
