@@ -224,5 +224,5 @@ fig.legend(
 )
 
 plt.tight_layout(rect=[0, 0, 0.88, 1])
-# plt.savefig("plot3.pdf", format='pdf', bbox_inches='tight')
+plt.savefig("plot3.pdf", format='pdf', bbox_inches='tight')
 plt.show()
