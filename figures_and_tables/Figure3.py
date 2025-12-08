@@ -197,6 +197,10 @@ print_rounded_scientific("lambda_M[3]", lambda_M[2])
 print_rounded_scientific("lambda_R", lambda_R)
 print_rounded_scientific("tau", tau)
 
+for i in range(3):
+    # compute singular values only (no U, V^T)
+    s = np.linalg.svd(W_D[i], compute_uv=False)
+    print(f"Singular values of W_D[{i}]: {s}")
 
 # Convert to absolute values
 W_D_abs = [np.abs(W) for W in W_D]
@@ -251,5 +255,5 @@ cbar = fig.colorbar(
     pad=0.05,
 )
 cbar.ax.tick_params(labelsize=10)
-# plt.savefig("plot1.pdf", format='pdf', bbox_inches='tight')
+plt.savefig("plot1.pdf", format='pdf', bbox_inches='tight')
 plt.show()
