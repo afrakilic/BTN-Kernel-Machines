@@ -255,5 +255,5 @@ cbar = fig.colorbar(
     pad=0.05,
 )
 cbar.ax.tick_params(labelsize=10)
-plt.savefig("plot1.pdf", format='pdf', bbox_inches='tight')
+#plt.savefig("plot1.pdf", format='pdf', bbox_inches='tight')
 plt.show()
