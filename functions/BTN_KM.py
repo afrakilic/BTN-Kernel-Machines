@@ -58,16 +58,16 @@ class btnkm:
         max_rank: int,
         shape_parameter_tau: float = 1,
         scale_parameter_tau: float = 1,
-        shape_parameter_lambda_R: np.ndarray = None,
-        scale_parameter_lambda_R: np.ndarray = None,
-        shape_parameter_lambda_M: np.ndarray = None,
-        scale_parameter_lambda_M: np.ndarray = None,
+        shape_parameter_lambda: np.ndarray = None,
+        scale_parameter_lambda: np.ndarray = None,
+        shape_parameter_delta: np.ndarray = None,
+        scale_parameter_delta: np.ndarray = None,
         max_iter: int = 100,
         seed: int = 0,
-        lambda_R_update: bool = True,
+        lambda_update: bool = True,
         prune_rank: bool = True,  # Optional rank pruning
         rank_tol: int = 1e-5,  # this is threshold to keep the certain rank (i.e. columns in factor matrices)in terms of explained variance
-        lambda_M_update: bool = True,
+        delta_update: bool = True,
         precision_update: bool = True,
         lower_bound_tol: int = 1e-4,
         plot_results: bool = True,
@@ -86,32 +86,32 @@ class btnkm:
         b0 = scale_parameter_tau
 
         c0 = (
-            shape_parameter_lambda_R
-            if shape_parameter_lambda_R is not None
+            shape_parameter_lambda
+            if shape_parameter_lambda is not None
             else np.ones(max_iter)
         )
         c_N = c0
         d0 = (
-            scale_parameter_lambda_R
-            if scale_parameter_lambda_R is not None
+            scale_parameter_lambda
+            if scale_parameter_lambda is not None
             else np.ones(max_iter)
         )
         d_N = d0
         lambda_R = c0 / d0
 
         g0_m = (
-            shape_parameter_lambda_M
-            if shape_parameter_lambda_M is not None
+            shape_parameter_delta
+            if shape_parameter_delta is not None
             else np.ones(I)
         )
         g_N = [g0_m for _ in range(D)]
         h0_m = (
-            scale_parameter_lambda_M
-            if scale_parameter_lambda_M is not None
+            scale_parameter_delta
+            if scale_parameter_delta is not None
             else np.ones(I)
         )
         h_N = [h0_m for _ in range(D)]
-        lambda_M = [[g0_m / h0_m] for _ in range(D)]
+        delta = [[g0_m / h0_m] for _ in range(D)]
 
         # initialize the factor matrices
         W_D = [np.random.randn(I, R) for _ in range(D)]  #  IXR
@@ -162,7 +162,7 @@ class btnkm:
                 )
 
                 A = tau * (cc + V_temp) + np.kron(
-                    lambda_R * np.eye(R), lambda_M[d] * np.eye(I)
+                    lambda_R * np.eye(R), delta[d] * np.eye(I)
                 )
                 try:
                     WSigma_D[d] = np.linalg.inv(A)
@@ -179,7 +179,7 @@ class btnkm:
             # LAMBDA UPDATES
 
             # Lambda_M Update
-            if lambda_M_update:
+            if delta_update:
                 for d in range(D):
                     mtemp = np.diag(W_D[d] @ (lambda_R * np.eye(R)) @ W_D[d].T)
                     vtemp = np.diag(
@@ -194,11 +194,11 @@ class btnkm:
                     )
                     g_N[d] = g0_m + R / 2
                     h_N[d] = h0_m * np.ones(I) + (mtemp + vtemp) / 2
-                    lambda_M[d] = g_N[d] / h_N[d]
-                    lambda_M[d][lambda_M[d] < 1e-5] = 1e-5
+                    delta[d] = g_N[d] / h_N[d]
+                    delta[d][delta[d] < 1e-5] = 1e-5
 
             # Lambda_R Update
-            if lambda_R_update:
+            if lambda_update:
 
                 c_N = (0.5 * D * I) + c0
                 d_N = 0
@@ -208,10 +208,10 @@ class btnkm:
                         np.reshape(WSigma_D[d], (I, R, I, R), order="F"),
                         axes=(0, 2, 1, 3),
                     )
-                    mtemp = np.diag(W_D[d].T @ (lambda_M[d] * np.eye(I)) @ W_D[d])
+                    mtemp = np.diag(W_D[d].T @ (delta[d] * np.eye(I)) @ W_D[d])
                     vtemp = np.diag(
                         np.reshape(
-                            (lambda_M[d] * np.eye(I)).ravel(order="F").T
+                            (delta[d] * np.eye(I)).ravel(order="F").T
                             @ WSigma_D[d]
                             .reshape(I, R, I, R)
                             .transpose(0, 2, 1, 3)
@@ -255,7 +255,7 @@ class btnkm:
 
             temp22 = np.zeros((I * R, I * R))
             for d in range(D):
-                temp22 += np.kron(lambda_R * np.eye(R), lambda_M[d] * np.eye(I)) @ (
+                temp22 += np.kron(lambda_R * np.eye(R), delta[d] * np.eye(I)) @ (
                     np.outer(W_D[d].ravel(order="F"), W_D[d].ravel(order="F"))
                     + WSigma_D[d]
                 )
@@ -362,7 +362,7 @@ class btnkm:
                     (np.diag(W_D[d] @ W_D[d].T) / np.sum(np.diag(W_D[d] @ W_D[d].T)))
                     * 100
                     >= 0.25
-                    # (1 / np.array(lambda_M[d]))/np.sum(1 / np.array(lambda_M[d]))*100 >= 0.5
+                    # (1 / np.array(delta[d]))/np.sum(1 / np.array(delta[d]))*100 >= 0.5
                 )
                 for d in range(D)
             ]

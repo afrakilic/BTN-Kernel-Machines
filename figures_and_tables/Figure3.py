@@ -58,8 +58,8 @@ c0, d0 = 1e-6 * np.ones(Rmax), 1e-6 * np.ones(Rmax)
 g0, h0 = 1e-6 * np.ones(Imax), 1e-6 * np.ones(Imax)
 
 precision_update = True
-lambda_R_update = True
-lambda_M_update = True
+lambda_update = True
+delta_update = True
 
 # factor matrices
 W_D = [np.random.randn(Imax, Rmax) for _ in range(D)]  #  IXR
@@ -75,7 +75,7 @@ d_N = d0
 lambda_R = c0 / d0
 g_N = [g0 for _ in range(D)]
 h_N = [h0 for _ in range(D)]
-lambda_M = [[g0 / h0] for _ in range(D)]
+delta = [[g0 / h0] for _ in range(D)]
 tau = a0 / b0
 
 for d in range(len(W_D)):
@@ -108,7 +108,7 @@ for it in range(100):
 
         WSigma_D[d] = np.linalg.pinv(
             tau * (cc + V_temp)
-            + np.kron(lambda_R * np.eye(Rmax), lambda_M[d] * np.eye(Imax))
+            + np.kron(lambda_R * np.eye(Rmax), delta[d] * np.eye(Imax))
         )
         W_D[d] = np.reshape((tau * WSigma_D[d] @ cy), (Imax, Rmax), order="F")
 
@@ -117,8 +117,8 @@ for it in range(100):
         )
         hadamard_product_mean = hadamard_product_mean * (Phi[d] @ W_D[d])
 
-    # Lambda_M Update
-    if lambda_M_update:
+    # delta Update
+    if delta_update:
         for d in range(D):
             mtemp = np.diag(W_D[d] @ (lambda_R * np.eye(Rmax)) @ W_D[d].T)
             vtemp = np.diag(
@@ -133,9 +133,9 @@ for it in range(100):
             )
             g_N[d] = g0 + Rmax / 2
             h_N[d] = h0 * np.ones(Imax) + (mtemp + vtemp) / 2
-            lambda_M[d] = g_N[d] / h_N[d]
+            delta[d] = g_N[d] / h_N[d]
 
-    if lambda_R_update:
+    if lambda_update:
         c_N = (0.5 * D * Imax) + c0
         d_N = 0
 
@@ -144,10 +144,10 @@ for it in range(100):
                 np.reshape(WSigma_D[d], (Imax, Rmax, Imax, Rmax), order="F"),
                 axes=(0, 2, 1, 3),
             )
-            mtemp = np.diag(W_D[d].T @ (lambda_M[d] * np.eye(Imax)) @ W_D[d])
+            mtemp = np.diag(W_D[d].T @ (delta[d] * np.eye(Imax)) @ W_D[d])
             vtemp = np.diag(
                 np.reshape(
-                    (lambda_M[d] * np.eye(Imax)).ravel(order="F").T
+                    (delta[d] * np.eye(Imax)).ravel(order="F").T
                     @ WSigma_D[d]
                     .reshape(Imax, Rmax, Imax, Rmax)
                     .transpose(0, 2, 1, 3)
@@ -191,9 +191,9 @@ def print_rounded_scientific(label, array):
 print_rounded_scientific("W_D[1]", W_D[0])
 print_rounded_scientific("W_D[2]", W_D[1])
 print_rounded_scientific("W_D[3]", W_D[2])
-print_rounded_scientific("lambda_M[1]", lambda_M[0])
-print_rounded_scientific("lambda_M[2]", lambda_M[1])
-print_rounded_scientific("lambda_M[3]", lambda_M[2])
+print_rounded_scientific("delta[1]", delta[0])
+print_rounded_scientific("delta[2]", delta[1])
+print_rounded_scientific("delta[3]", delta[2])
 print_rounded_scientific("lambda_R", lambda_R)
 print_rounded_scientific("tau", tau)
 
@@ -226,7 +226,7 @@ def format_lambda(val):
 for i, ax in enumerate(axes):
     col_labels = [f"${format_lambda(val)}$" for j, val in enumerate(lambda_R)]
 
-    row_labels = [f"${format_lambda(val)}$" for k, val in enumerate(lambda_M[i])]
+    row_labels = [f"${format_lambda(val)}$" for k, val in enumerate(delta[i])]
 
     heatmap = sns.heatmap(
         W_D_abs[i],

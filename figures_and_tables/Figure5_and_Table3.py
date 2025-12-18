@@ -75,14 +75,14 @@ for dataset_idx, dataset_name in enumerate(datasets):
                 max_rank=max_rank,
                 shape_parameter_tau=a,
                 scale_parameter_tau=b,
-                shape_parameter_lambda_R=c,
-                scale_parameter_lambda_R=d,
-                shape_parameter_lambda_M=g,
-                scale_parameter_lambda_M=h,
+                shape_parameter_lambda=c,
+                scale_parameter_lambda=d,
+                shape_parameter_delta=g,
+                scale_parameter_delta=h,
                 max_iter=50,
                 precision_update=True,
-                lambda_R_update=True,
-                lambda_M_update=False,
+                lambda_update=True,
+                delta_update=False,
                 plot_results=False,
                 prune_rank=True,
             )
@@ -113,14 +113,14 @@ for dataset_idx, dataset_name in enumerate(datasets):
                 max_rank=max_rank,
                 shape_parameter_tau=a,
                 scale_parameter_tau=b,
-                shape_parameter_lambda_R=c,
-                scale_parameter_lambda_R=d,
-                shape_parameter_lambda_M=g,
-                scale_parameter_lambda_M=h,
+                shape_parameter_lambda=c,
+                scale_parameter_lambda=d,
+                shape_parameter_delta=g,
+                scale_parameter_delta=h,
                 max_iter=50,
                 precision_update=True,
-                lambda_R_update=True,
-                lambda_M_update=True,
+                lambda_update=True,
+                delta_update=True,
                 plot_results=False,
                 prune_rank=True,
             )
@@ -183,7 +183,7 @@ for dataset_idx, dataset in enumerate(titles):
             width=width,
             color=color,
             alpha=0.3,
-            label=r"$\Lambda_M$: off, $M_{{\max}} = {}$".format(D),
+            label=r"$\delta$: off, $M_{{\max}} = {}$".format(D),
         )
 
         ax.bar(
@@ -192,7 +192,7 @@ for dataset_idx, dataset in enumerate(titles):
             width=width,
             color=color,
             alpha=1,
-            label=r"$\Lambda_M$: on, $M_{{\max}} = {}$".format(D),
+            label=r"$\delta$: on, $M_{{\max}} = {}$".format(D),
         )
 
     ax.axhline(y=50, color="#00008B", linestyle="--", linewidth=2)
