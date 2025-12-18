@@ -187,7 +187,6 @@ def print_rounded_scientific(label, array):
     print()
 
 
-# Print all arrays
 print_rounded_scientific("W_D[1]", W_D[0])
 print_rounded_scientific("W_D[2]", W_D[1])
 print_rounded_scientific("W_D[3]", W_D[2])
@@ -224,6 +223,7 @@ def format_lambda(val):
 
 
 for i, ax in enumerate(axes):
+    
     col_labels = [f"${format_lambda(val)}$" for j, val in enumerate(lambda_R)]
 
     row_labels = [f"${format_lambda(val)}$" for k, val in enumerate(delta[i])]
@@ -246,7 +246,6 @@ for i, ax in enumerate(axes):
     ax.tick_params(axis="x", rotation=45, labelsize=12.1)
     ax.tick_params(axis="y", labelsize=12.1)
 
-# Add horizontal colorbar below all heatmaps
 cbar = fig.colorbar(
     heatmap.get_children()[0],
     ax=axes.ravel().tolist(),
@@ -255,5 +254,30 @@ cbar = fig.colorbar(
     pad=0.05,
 )
 cbar.ax.tick_params(labelsize=10)
-#plt.savefig("plot1.pdf", format='pdf', bbox_inches='tight')
+fig.subplots_adjust(left=0.16, bottom=0.16)
+
+t_left = fig.text(
+    -0.00, 0.5,
+    r"$\boldsymbol{\delta}_d$",
+    va="center",
+    ha="center",
+    rotation="vertical",
+    fontsize=15,
+)
+
+t_bottom = fig.text(
+    0.5, -0.05,
+    r"$\boldsymbol{\lambda}$",
+    va="center",
+    ha="center",
+    fontsize=15,
+)
+
+# plt.savefig(
+#     "plot1.pdf",
+#     format="pdf",
+#     bbox_inches="tight",
+#     bbox_extra_artists=[t_left, t_bottom],
+# )
+
 plt.show()

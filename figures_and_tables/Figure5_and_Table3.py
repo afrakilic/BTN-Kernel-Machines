@@ -183,7 +183,7 @@ for dataset_idx, dataset in enumerate(titles):
             width=width,
             color=color,
             alpha=0.3,
-            label=r"$\delta$: off, $M_{{\max}} = {}$".format(D),
+            label=r"$\delta_d$: off, $M_{{\max}} = {}$".format(D),
         )
 
         ax.bar(
@@ -192,7 +192,7 @@ for dataset_idx, dataset in enumerate(titles):
             width=width,
             color=color,
             alpha=1,
-            label=r"$\delta$: on, $M_{{\max}} = {}$".format(D),
+            label=r"$\delta_d$: on, $M_{{\max}} = {}$".format(D),
         )
 
     ax.axhline(y=50, color="#00008B", linestyle="--", linewidth=2)
@@ -201,7 +201,7 @@ for dataset_idx, dataset in enumerate(titles):
     ax.set_xlabel("Features", fontsize=22, labelpad=15)
     ax.set_xticks(x_indices + width / 2)
     ax.set_xticklabels(
-        [str(i) for i in range(1, n_features + 1)], rotation=90, fontsize=22
+        [str(i) for i in range(1, n_features + 1)], fontsize=22
     )
     ax.tick_params(axis="both")
     ax.tick_params(axis="y", labelsize=20)
