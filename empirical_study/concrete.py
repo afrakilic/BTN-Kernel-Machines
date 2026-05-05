@@ -33,6 +33,7 @@ g, h = 1e-6 * np.ones(input_dimension), 1e-6 * np.ones(input_dimension)
 R_effective = []
 rmse_values = []
 nll_values = []
+all_runs = []
 
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
@@ -92,7 +93,13 @@ for i in range(10):
     # rmse
     rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
     rmse_values.append(rmse)
-
+    df_runs = pd.DataFrame({
+        "run": i,
+        "y_test": y_test,
+        "prediction_mean": prediction_mean_unscaled,
+        "prediction_std": prediction_std_unscaled,
+    })
+    all_runs.append(df_runs)
     R_effective.append(R)
 
 
@@ -111,6 +118,8 @@ print(
 )
 print(f"Effective R: {effective_r}, std: {effective_r_std}")
 
+
+#pd.concat(all_runs, ignore_index=True).to_csv("concrete_results_all_runs.csv", index=False)
 # REPORTED
 # input_dimension = 20
 # max_rank = 50

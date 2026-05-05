@@ -32,11 +32,9 @@ c, d = 1e-5 * np.ones(max_rank), 1e-6 * np.ones(max_rank)
 g, h = 1e-6 * np.ones(input_dimension), 1e-6 * np.ones(input_dimension)
 
 R_effective = []
-M_means = []
-M_variances = []
 rmse_values = []
 nll_values = []
-
+all_runs = []
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
 for i in range(10):
@@ -51,7 +49,7 @@ for i in range(10):
     X_std[X_std == 0] = 1
     X_train = (X_train - X_mean) / X_std
     X_test = (X_test - X_mean) / X_std  # Use train stats
-
+    
     y_mean = y_train.mean()
     y_std = y_train.std()
     y_train = (y_train - y_mean) / y_std
@@ -94,10 +92,14 @@ for i in range(10):
     # rmse
     rmse = np.sqrt(np.mean((prediction_mean_unscaled - y_test) ** 2))
     rmse_values.append(rmse)
-
+    df_runs = pd.DataFrame({
+        "run": i,
+        "y_test": y_test,
+        "prediction_mean": prediction_mean_unscaled,
+        "prediction_std": prediction_std_unscaled,
+    })
+    all_runs.append(df_runs)
     R_effective.append(R)
-    M_means.append(M_mean)
-    M_variances.append(M_std)
 
 
 end_time = time.time()
@@ -114,7 +116,7 @@ print(
     f"Mean NLL : {np.mean(nll_values)}, Standard Deviation of NLL: {np.std(nll_values)}"
 )
 print(f"Effective R: {effective_r}, std: {effective_r_std}")
-
+pd.concat(all_runs, ignore_index=True).to_csv("data/energy_results_all_runs.csv", index=False)
 # REPORTED
 # input_dimension = 20
 # # max_rank = 50
