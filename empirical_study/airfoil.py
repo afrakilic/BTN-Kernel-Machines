@@ -33,6 +33,7 @@ R_effective = []
 rmse_values = []
 nll_values = []
 all_runs = []
+SAVE_RUN_ID=7
 # Loop 10 times to run the training and evaluation
 start_time = time.time()
 for i in range(10):
@@ -42,6 +43,12 @@ for i in range(10):
     split_index = int(0.90 * len(X))  # 90% for training, 10% for testing
     X_train, X_test = X[indices[:split_index]], X[indices[split_index:]]
     y_train, y_test = y[indices[:split_index]], y[indices[split_index:]]
+
+    if i == SAVE_RUN_ID:
+        pd.DataFrame({
+            "index": indices,
+            "split": ["train"] * split_index + ["test"] * (len(indices) - split_index)
+        }).to_csv("data/split_indices_airfoil.csv", index=False)
 
     X_mean = X_train.mean(axis=0)
     X_std = X_train.std(axis=0)

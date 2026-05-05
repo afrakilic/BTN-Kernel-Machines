@@ -1,283 +1,142 @@
 """
-This script generates Figure 3, demonstrating the ability of the BTN-Kernel machines to recover
-ground truth factor matrices from synthetic data.
+This script produces Figure 4, illustrating the convergence behavior of the BTN-Kernel machines
+on three regression datasets: Concrete, Energy, and Airfoil.
 
-A synthetic tensor regression task is constructed by:
-  - Sampling low-rank weight matrices and sparse feature interactions across three modes.
-  - Generating output labels from a known multiplicative structure with added Gaussian noise.
+For each dataset, it:
+  - Loads and normalizes the data.
+  - Trains BTN-Kernel machines with three different maximum rank settings.
+  - Tracks the effective rank (R_eff) and variational lower bound (LB) during training.
 
-BTN-Kernel machines is then trained to infer the underlying weight structure using variational updates
-on the posterior of factor matrices and associated precision parameters.
-
-The recovered weights are visualized as log-normalized heatmaps, with axes annotated by the
-corresponding learned prior precisions (λ_M and λ_R). These results illustrate  BTN-Kernel machines'
-capacity to uncover interpretable and sparse low-rank structure from noisy observations.
+The plots show how the model automatically prunes redundant components and converges,
+demonstrating its efficiency and robustness across varying complexities.
 """
+
+# FIGURE 4
 
 import os, sys
 
 sys.path.append(os.getcwd())
-from config import *  # Import everything from config.pyg
-from functions.utils import (
-    pure_power_features_full,
-    dotkron,
-    temp,
-    safe_division,
-    dotkronX,
-)
+from config import *  # Import everything from config.py
+from functions.BTN_KM import btnkm
 
-np.random.seed(1)
+datasets = ["concrete.csv", "energy.csv", "airfoil.csv"]
+titles = ["Concrete", "Energy", "Airfoil"]
 
-# TRUE MODEL
-D, Rtrue, Rmax, Imax, N = 3, 3, 5, 5, 500
-sigma_e = 1e-3
-e = sigma_e * np.random.randn(N)
-
-# Generate random indices and weight matrices in a loop
-indices = [
-    np.sort(np.random.choice(Imax, np.random.randint(1, Imax), replace=False))
-    for _ in range(D)
-]
-Ws = [1e1 * np.random.randn(len(idx), Rtrue) for idx in indices]
-#  features
-X = np.random.rand(N, D)
-Phi = pure_power_features_full(X, Imax)
-
-y = np.sum(
-    (Phi[0][:, indices[0]] @ Ws[0])
-    * (Phi[1][:, indices[1]] @ Ws[1])
-    * (Phi[2][:, indices[2]] @ Ws[2]),
-    axis=1,
-)
-y = y + e
+# Set experiment parameters
+input_dimension = 20
+max_rank = np.array([10, 25, 50])
+line_styles = ["-", "--", "-."]
+markers = ["o", "s", "d"]
+line_colors = ["#A40000", "#00008B", "#006B3C"]
 
 
-# initializations
-a0, b0 = 1e-3, 1e-3
-c0, d0 = 1e-6 * np.ones(Rmax), 1e-6 * np.ones(Rmax)
-g0, h0 = 1e-6 * np.ones(Imax), 1e-6 * np.ones(Imax)
+fig, axs = plt.subplots(2, 3, figsize=(15.5, 7))
 
-precision_update = True
-lambda_update = True
-delta_update = True
 
-# factor matrices
-W_D = [np.random.randn(Imax, Rmax) for _ in range(D)]  #  IXR
-# Initialize the covariance matrices
-WSigma_D = [0.1 * np.kron(np.eye(Rmax), np.eye(Imax)) for d in range(D)]
+for dataset_idx, dataset_name in enumerate(datasets):
 
-# Compute the Hadamard product of matrices in W_K
-hadamard_product_V = np.ones((N, Rmax**2))  # Start with the first matrix
-hadamard_product_mean = np.ones((N, Rmax))
+    df = pd.read_csv(f"data/{dataset_name}", header=None)
+    df.columns = df.iloc[0]
+    df = df[1:].reset_index(drop=True).astype(float)
 
-c_N = c0
-d_N = d0
-lambda_R = c0 / d0
-g_N = [g0 for _ in range(D)]
-h_N = [h0 for _ in range(D)]
-delta = [[g0 / h0] for _ in range(D)]
-tau = a0 / b0
+    X_all, y_all = df.iloc[:, :-1].values, df.iloc[:, -1].values
 
-for d in range(len(W_D)):
-    hadamard_product_V = hadamard_product_V * temp(
-        Phi=Phi[d], V=WSigma_D[d], R=Rmax
-    )  # Element-wise multiplication
-    hadamard_product_mean = hadamard_product_mean * (Phi[d] @ W_D[d])
+    np.random.seed(1)
+    indices = np.random.permutation(len(X_all))
+    split_index = int(0.9 * len(X_all))
+    X_train, X_test = X_all[indices[:split_index]], X_all[indices[split_index:]]
+    y_train, y_test = y_all[indices[:split_index]], y_all[indices[split_index:]]
 
-for it in range(100):
+    # Normalize
+    X_mean, X_std = X_train.mean(axis=0), X_train.std(axis=0)
+    X_std[X_std == 0] = 1
+    X_train = (X_train - X_mean) / X_std
+    X_test = (X_test - X_mean) / X_std
 
-    for d in range(D):  # update the posterior q(vec(W^d)):
+    y_mean, y_std = y_train.mean(), y_train.std()
+    y_train = (y_train - y_mean) / y_std
 
-        hadamard_product_V = safe_division(
-            hadamard_product_V, (temp(Phi=Phi[d], V=WSigma_D[d], R=Rmax))
-        )
-        hadamard_product_mean = safe_division(
-            hadamard_product_mean, ((Phi[d] @ W_D[d]))
+    all_R_values_energy = []
+    all_LB_energy = []
+
+    for i in range(3):
+        a, b = 1e-3, 1e-3
+        c, d = 1e-5 * np.ones(max_rank[i]), 1e-6 * np.ones(max_rank[i])
+        g, h = 1e-6 * np.ones(input_dimension), 1e-6 * np.ones(input_dimension)
+
+        model = btnkm(X_train.shape[1])
+        _, _, _, _, _, R_values, LB = model.train(
+            features=X_train,
+            target=y_train,
+            input_dimension=input_dimension,
+            max_rank=max_rank[i],
+            shape_parameter_tau=a,
+            scale_parameter_tau=b,
+            shape_parameter_lambda=c,
+            scale_parameter_lambda=d,
+            shape_parameter_delta=g,
+            scale_parameter_delta=h,
+            max_iter=150,
+            precision_update=True,
+            lambda_update=True,
+            delta_update=True,
+            plot_results=False,
+            prune_rank=True,
+            lower_bound_tol=1e-10,
         )
 
-        W_K_PROD_V = dotkron(Phi[d], Phi[d]).T @ hadamard_product_V
-        cc, cy = dotkronX(Phi[d], hadamard_product_mean, y)
-        V_temp = np.reshape(
-            np.transpose(
-                np.reshape(W_K_PROD_V, (Imax, Imax, Rmax, Rmax), order="F"),
-                axes=(0, 2, 1, 3),
-            ),
-            (Imax * Rmax, Imax * Rmax),
-            order="F",
+        all_R_values_energy.append(R_values)
+        all_LB_energy.append(LB)
+
+    # Plot R values
+    for i in range(3):
+        axs[0, dataset_idx].plot(
+            all_R_values_energy[i],
+            linestyle=line_styles[i],
+            marker=markers[i],
+            color=line_colors[i],
+            markersize=3,
+            label=r"$R_{{\max}} = {}$".format(max_rank[i]),
         )
+    axs[0, dataset_idx].set_title(f"{titles[dataset_idx]}", fontsize=24)
+    axs[0, 0].set_ylabel(r"$R_{\text{eff}}$", fontsize=22)
+    axs[0, dataset_idx].spines["top"].set_visible(False)
+    axs[0, dataset_idx].spines["right"].set_visible(False)
+    axs[0, dataset_idx].set_facecolor("white")
+    axs[0, dataset_idx].tick_params(axis="both", which="major", labelsize=20)
+    max_len_r = max(len(r) for r in all_R_values_energy)
+    axs[0, dataset_idx].set_xticks(np.arange(0, max_len_r + 1, 50))
 
-        WSigma_D[d] = np.linalg.pinv(
-            tau * (cc + V_temp)
-            + np.kron(lambda_R * np.eye(Rmax), delta[d] * np.eye(Imax))
+    # Plot Lower Bounds
+    for i in range(3):
+        iterations = np.arange(1, len(all_LB_energy[i]) + 1)
+        axs[1, dataset_idx].plot(
+            iterations,
+            all_LB_energy[i],
+            linestyle=line_styles[i],
+            marker=markers[i],
+            color=line_colors[i],
+            markersize=3,
+            alpha=0.8,
         )
-        W_D[d] = np.reshape((tau * WSigma_D[d] @ cy), (Imax, Rmax), order="F")
+    axs[1, dataset_idx].set_xlabel("Iteration", fontsize=22)
+    axs[1, 0].set_ylabel("LB", fontsize=22)
+    axs[1, dataset_idx].spines["top"].set_visible(False)
+    axs[1, dataset_idx].spines["right"].set_visible(False)
+    axs[1, dataset_idx].set_facecolor("white")
+    axs[1, dataset_idx].tick_params(axis="both", which="major", labelsize=20)
+    axs[1, dataset_idx].set_xticks(np.arange(0, max_len_r + 1, 50))
 
-        hadamard_product_V = hadamard_product_V * temp(
-            Phi=Phi[d], V=WSigma_D[d], R=Rmax
-        )
-        hadamard_product_mean = hadamard_product_mean * (Phi[d] @ W_D[d])
-
-    # delta Update
-    if delta_update:
-        for d in range(D):
-            mtemp = np.diag(W_D[d] @ (lambda_R * np.eye(Rmax)) @ W_D[d].T)
-            vtemp = np.diag(
-                np.reshape(
-                    WSigma_D[d]
-                    .reshape(Imax, Rmax, Imax, Rmax)
-                    .transpose(0, 2, 1, 3)
-                    .reshape(Imax**2, Rmax**2)
-                    @ (lambda_R * np.eye(Rmax)).ravel(order="F"),
-                    (Imax, Imax),
-                )
-            )
-            g_N[d] = g0 + Rmax / 2
-            h_N[d] = h0 * np.ones(Imax) + (mtemp + vtemp) / 2
-            delta[d] = g_N[d] / h_N[d]
-
-    if lambda_update:
-        c_N = (0.5 * D * Imax) + c0
-        d_N = 0
-
-        for d in range(D):
-            np.transpose(
-                np.reshape(WSigma_D[d], (Imax, Rmax, Imax, Rmax), order="F"),
-                axes=(0, 2, 1, 3),
-            )
-            mtemp = np.diag(W_D[d].T @ (delta[d] * np.eye(Imax)) @ W_D[d])
-            vtemp = np.diag(
-                np.reshape(
-                    (delta[d] * np.eye(Imax)).ravel(order="F").T
-                    @ WSigma_D[d]
-                    .reshape(Imax, Rmax, Imax, Rmax)
-                    .transpose(0, 2, 1, 3)
-                    .reshape(Imax**2, Rmax**2),
-                    (Rmax, Rmax),
-                )
-            )
-            d_N += mtemp + vtemp
-
-        d_N = d0 + (0.5 * d_N)
-        lambda_R = c_N / d_N
-
-    # Error Precision Update
-    ss_error = np.dot(
-        (y - np.sum(hadamard_product_mean, axis=1)),
-        (y - np.sum(hadamard_product_mean, axis=1)),
-    )
-    covariance = np.sum(np.sum(hadamard_product_V, axis=1))
-    err = ss_error  # + covariance
-
-    if precision_update:
-        a_N = a0 + (N / 2)
-        b_N = b0 + (0.5 * (ss_error + covariance))
-    else:
-        a_N = a0
-        b_N = b0
-
-    tau = a_N / b_N
-
-
-def print_rounded_scientific(label, array):
-    print(f"{label}:")
-    with np.printoptions(
-        precision=2, suppress=False, formatter={"float_kind": lambda x: f"{x:.2e}"}
-    ):
-        print(array)
-    print()
-
-
-print_rounded_scientific("W_D[1]", W_D[0])
-print_rounded_scientific("W_D[2]", W_D[1])
-print_rounded_scientific("W_D[3]", W_D[2])
-print_rounded_scientific("delta[1]", delta[0])
-print_rounded_scientific("delta[2]", delta[1])
-print_rounded_scientific("delta[3]", delta[2])
-print_rounded_scientific("lambda_R", lambda_R)
-print_rounded_scientific("tau", tau)
-
-for i in range(3):
-    # compute singular values only (no U, V^T)
-    s = np.linalg.svd(W_D[i], compute_uv=False)
-    print(f"Singular values of W_D[{i}]: {s}")
-
-# Convert to absolute values
-W_D_abs = [np.abs(W) for W in W_D]
-raw_min = min(W.min() for W in W_D_abs)
-vmin = max(raw_min, 1e-5)  # Ensure vmin > 0
-vmax = max(W.max() for W in W_D_abs)
-
-# Heatmap
-fig, axes = plt.subplots(1, 3, figsize=(10, 2.8), constrained_layout=True)
-fig.subplots_adjust(wspace=0.2, hspace=5)
-heatmap = None
-
-
-def format_lambda(val):
-    if abs(val) > 1e2:
-        base, exp = f"{val:.2e}".split("e")
-        base = float(base)  # Convert base to float
-        return f"{round(base)} \\times 10^{{{int(exp)}}}"
-    else:
-        return f"{val:.2f}"
-
-
-for i, ax in enumerate(axes):
-    
-    col_labels = [f"${format_lambda(val)}$" for j, val in enumerate(lambda_R)]
-
-    row_labels = [f"${format_lambda(val)}$" for k, val in enumerate(delta[i])]
-
-    heatmap = sns.heatmap(
-        W_D_abs[i],
-        cmap="gray_r",
-        norm=LogNorm(vmin=vmin, vmax=vmax),
-        ax=ax,
-        cbar=False,
-        square=True,
-        xticklabels=col_labels,
-        yticklabels=row_labels,
-        annot=False,
-        linewidths=0.01,
-        linecolor="lightgray",
-    )
-    ax.set_aspect("equal")
-    ax.set_title(f"$\\tilde{{W}}^{{({i+1})}}$", fontsize=18)
-    ax.tick_params(axis="x", rotation=45, labelsize=12.1)
-    ax.tick_params(axis="y", labelsize=12.1)
-
-cbar = fig.colorbar(
-    heatmap.get_children()[0],
-    ax=axes.ravel().tolist(),
-    orientation="vertical",
-    fraction=0.02,
-    pad=0.05,
+handles, labels = axs[0, 0].get_legend_handles_labels()
+fig.legend(
+    handles,
+    labels,
+    loc="center left",
+    bbox_to_anchor=(0.93, 0.5),
+    fontsize=22,
+    frameon=False,
 )
-cbar.ax.tick_params(labelsize=10)
-fig.subplots_adjust(left=0.16, bottom=0.16)
-
-t_left = fig.text(
-    -0.00, 0.5,
-    r"$\boldsymbol{\delta}_d$",
-    va="center",
-    ha="center",
-    rotation="vertical",
-    fontsize=15,
-)
-
-t_bottom = fig.text(
-    0.5, -0.05,
-    r"$\boldsymbol{\lambda}$",
-    va="center",
-    ha="center",
-    fontsize=15,
-)
-
-# plt.savefig(
-#     "plot1.pdf",
-#     format="pdf",
-#     bbox_inches="tight",
-#     bbox_extra_artists=[t_left, t_bottom],
-# )
-
+plt.tight_layout(rect=[0, 0, 0.9, 1])
+plt.subplots_adjust(wspace=0.5, hspace=0.3)
+#plt.savefig("plot2.pdf", format='pdf', bbox_inches='tight')
 plt.show()
