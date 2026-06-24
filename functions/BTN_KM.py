@@ -167,7 +167,7 @@ class btnkm:
                 )
                 hadamard_product_mean = hadamard_product_mean * (Phi[d] @ W_D[d])
 
-            # LAMBDA UPDATES
+            # Precision Values Updates
 
             # Delta Update
             if delta_update:
@@ -188,7 +188,7 @@ class btnkm:
                     delta[d] = g_N[d] / h_N[d]
                     delta[d][delta[d] < 1e-5] = 1e-5
 
-            # Lambda_R Update
+            # Lambda Update
             if lambda_update:
 
                 c_N = (0.5 * D * I) + c0
@@ -353,7 +353,6 @@ class btnkm:
                     (np.diag(W_D[d] @ W_D[d].T) / np.sum(np.diag(W_D[d] @ W_D[d].T)))
                     * 100
                     >= 0.25
-                    # (1 / np.array(delta[d]))/np.sum(1 / np.array(delta[d]))*100 >= 0.5
                 )
                 for d in range(D)
             ]
