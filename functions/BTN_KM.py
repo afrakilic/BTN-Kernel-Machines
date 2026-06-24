@@ -1,25 +1,16 @@
+
+
+
 """
-This script implements a general non-linear model using kernel machines. The model is formulated as:
+Non-linear model using kernel machines of the form y = Φw + e,
+where y is the output, Φ is the feature matrix, w is the weight vector, and e is the error term.
 
-    y = Φw + e
+The `btnkm` class provides `train` and `predict` methods. Training iteratively updates factor
+matrices, noise precision (tau), and regularization parameters (lambda) via variational inference,
+with optional rank pruning and convergence monitoring via a lower bound. Predictions include
+uncertainty estimates.
 
-Where:
-- y is the output vector,
-- Φ is the input matrix containing features of the data,
-- w is the model's weight vector, and
-- e is the error term.
-
-The class `Modelx` encapsulates the model, providing methods for both training (`train`) and prediction (`predict`).
-
-The training procedure involves:
-- Initializing factor matrices for the model's latent variables,
-- Iteratively updating the factor matrices, noise precision (tau), and regularization parameters (lambda),
-- Optionally pruning the rank of the model, and
-- Computing a lower bound (LB) and fit metric (R-squared) to assess convergence.
-
-The model is trained using input-output data, and once trained, it can make predictions on new data, providing not only the predicted output but also the uncertainty associated with the predictions.
-
-Dependencies and configurations are centralized in `config.py`.
+Dependencies and configurations are defined in `config.py`.
 """
 
 import os, sys
