@@ -23,7 +23,7 @@ from functions.utils import (
     temp,
     columnwise_kronecker,
     safe_division,
-    dotkronX,
+    dotkronX
 )
 
 from config import *  # Import everything from config.py
@@ -169,7 +169,7 @@ class btnkm:
 
             # LAMBDA UPDATES
 
-            # Lambda_M Update
+            # Delta Update
             if delta_update:
                 for d in range(D):
                     mtemp = np.diag(W_D[d] @ (lambda_R * np.eye(R)) @ W_D[d].T)
