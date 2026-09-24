@@ -158,3 +158,98 @@ def safe_division(X, A, epsilon=1):
 
 def safelog(x):
     return np.log(np.clip(x, 1e-10, 1e10))  # x to range [1e-10, 1e10]
+
+
+def mc_predictive_check(model, features, input_dimension, S=3000, y_true=None, seed=None):
+    """
+    Monte Carlo estimate of the predictive distribution from the fitted
+    posteriors in `model`, used to check the analytic Student's-t
+    predictive (eq. 3.40) against direct sampling of the same integral
+    (eq. 3.39), with no distributional form imposed.
+
+    NLL is Rao-Blackwellized: each sample is scored under its own exact
+    Gaussian likelihood (eq. 3.2), averaged in probability space via
+    logsumexp, rather than moment-matched to a single fitted distribution.
+    Coverage uses empirical quantiles of the posterior predictive draws.
+
+    Parameters
+    ----------
+    model : btnkm
+        Trained model (needs self.W_D, self.V, self.a, self.b).
+    features : np.ndarray (N, D_in)
+        Test inputs, same format as model.predict().
+    input_dimension : int
+        Same value used at training time.
+    S : int
+        Number of MC samples.
+    y_true : np.ndarray (N,), optional
+        True targets (same scale as model predictions). If given, MC NLL
+        and coverage are computed.
+    seed : int, optional
+
+    Returns
+    -------
+    dict
+        mc_mean, mc_std_epistemic, mc_std_total, lower_95, upper_95,
+        nll_mc, coverage_95, and the raw samples.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    D = len(model.W_D)
+    I, R = model.W_D[0].shape
+    N = features.shape[0]
+
+    Phi = pure_power_features_full(features, input_dimension) + 0.2  # D arrays, each (N, I)
+
+    # sample tau ~ Gamma(a_N, rate=b_N)
+    tau_samples = np.random.gamma(shape=model.a, scale=1.0 / model.b, size=S)  # (S,)
+
+    # sample each factor matrix W^(d) ~ N(vec(W_tilde^(d)), Sigma^(d));
+    # mean is flattened order="F" to match training, and samples are
+    # reshaped back the same way via (S, R, I) -> transpose
+    W_samples = []
+    for d in range(D):
+        mean_d = model.W_D[d].flatten(order="F")
+        cov_d = model.V[d]
+        flat_samples = np.random.multivariate_normal(mean_d, cov_d, size=S)
+        W_samples.append(flat_samples.reshape(S, R, I).transpose(0, 2, 1))  # (S, I, R)
+
+    # propagate every sampled model through the CPD prediction formula
+    hadamard = np.ones((S, N, R))
+    for d in range(D):
+        hadamard *= np.einsum("ni,sir->snr", Phi[d], W_samples[d])
+    preds_samples = hadamard.sum(axis=2)  # (S, N)
+
+    # full posterior predictive draws (add sampled observation noise)
+    noise = np.random.randn(S, N) / np.sqrt(tau_samples)[:, None]
+    y_samples = preds_samples + noise
+
+    # empirical summaries
+    mc_mean = preds_samples.mean(axis=0)
+    mc_std_epistemic = preds_samples.std(axis=0)
+    mc_std_total = y_samples.std(axis=0)
+    lower_95 = np.percentile(y_samples, 2.5, axis=0)
+    upper_95 = np.percentile(y_samples, 97.5, axis=0)
+
+    nll_mc, coverage = None, None
+    if y_true is not None:
+        log_dens = (
+            -0.5 * np.log(2 * np.pi / tau_samples)[:, None]
+            - 0.5 * tau_samples[:, None] * (y_true[None, :] - preds_samples) ** 2
+        )
+        log_p = logsumexp(log_dens, axis=0) - np.log(S)
+        nll_mc = -np.mean(log_p)
+        coverage = np.mean((y_true >= lower_95) & (y_true <= upper_95)) * 100
+
+    return {
+        "mc_mean": mc_mean,
+        "mc_std_epistemic": mc_std_epistemic,
+        "mc_std_total": mc_std_total,
+        "lower_95": lower_95,
+        "upper_95": upper_95,
+        "nll_mc": nll_mc,
+        "coverage_95": coverage,
+        "preds_samples": preds_samples,
+        "tau_samples": tau_samples,
+    }

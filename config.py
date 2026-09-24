@@ -21,3 +21,6 @@ from scipy.stats import norm
 import matplotlib as mpl
 from collections import defaultdict
 import pprint
+from scipy.special import logsumexp
+from scipy.stats import t as student_t
+from scipy.linalg import cho_factor, cho_solve

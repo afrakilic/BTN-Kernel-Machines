@@ -86,10 +86,12 @@ for dataset_idx, dataset_name in enumerate(datasets):
             pred_mean = pred_mean * y_std + y_mean
             pred_std = pred_std * y_std
 
+            nu = 2.0 * model.a
+            scale = pred_std / np.sqrt(nu / (nu - 2))
+
             rmse = np.sqrt(np.mean((pred_mean - y_test) ** 2))
-            nll = np.mean(
-                0.5 * np.log(2 * np.pi * pred_std**2)
-                + 0.5 * ((y_test - pred_mean) ** 2) / (pred_std**2)
+            nll = -np.mean(
+                student_t.logpdf(y_test, df=nu, loc=pred_mean, scale=scale)
             )
             r_eff = R_values[-1]
 

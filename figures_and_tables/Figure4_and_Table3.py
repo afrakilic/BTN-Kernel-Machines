@@ -92,9 +92,12 @@ for dataset_idx, dataset_name in enumerate(datasets):
             pred_mean_off = pred_mean_off * y_std + y_mean
             pred_std_off = pred_std_off * y_std
             rmse_off = np.sqrt(np.mean((pred_mean_off - y_test) ** 2))
-            nll_off = np.mean(
-                0.5 * np.log(2 * np.pi * pred_std_off**2)
-                + 0.5 * ((y_test - pred_mean_off) ** 2) / (pred_std_off**2)
+            nu_off = 2.0 * model_off.a
+            scale_off = pred_std_off / np.sqrt(nu_off / (nu_off - 2))
+
+            rmse_off = np.sqrt(np.mean((pred_mean_off - y_test) ** 2))
+            nll_off = -np.mean(
+                student_t.logpdf(y_test, df=nu_off, loc=pred_mean_off, scale=scale_off)
             )
 
             results[titles[dataset_idx]]["off"][input_dimension]["metrics"].append(
@@ -130,9 +133,12 @@ for dataset_idx, dataset_name in enumerate(datasets):
             pred_mean_on = pred_mean_on * y_std + y_mean
             pred_std_on = pred_std_on * y_std
             rmse_on = np.sqrt(np.mean((pred_mean_on - y_test) ** 2))
-            nll_on = np.mean(
-                0.5 * np.log(2 * np.pi * pred_std_on**2)
-                + 0.5 * ((y_test - pred_mean_on) ** 2) / (pred_std_on**2)
+            nu_on = 2.0 * model_on.a
+            scale_on = pred_std_on / np.sqrt(nu_on / (nu_on - 2))
+
+            rmse_on = np.sqrt(np.mean((pred_mean_on - y_test) ** 2))
+            nll_on = -np.mean(
+                student_t.logpdf(y_test, df=nu_on, loc=pred_mean_on, scale=scale_on)
             )
 
             results[titles[dataset_idx]]["on"][input_dimension]["metrics"].append(
