@@ -61,7 +61,7 @@ The repository code is structured in the following way
   Includes the code for running experiments that generate the figures and tables shown in **Section 4** of the paper, **except for Table 4**.
 
 - **`empirical_study/`**  
-  Contains the experiments described in **Section 4.4**, which are reported in **Table 4**.
+  Contains the experiments described in **Section 4.4** and **Section 4.5**, which are reported in **Table 4** and **Table 5** respectively.
 
 - **`functions/`**  
   Includes the implementation of **Bayesian Tensor Network Kernel Machines (BTN-KM)** and helper functions organized in the `utils` module.
