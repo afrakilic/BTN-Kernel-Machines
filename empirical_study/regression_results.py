@@ -161,3 +161,24 @@ print(nll_df.to_string(index=False))
 print("=" * 100)
 
 print(f"\nTotal runtime across all datasets: {runtimes_df['runtime_seconds'].sum():.2f} seconds")
+
+
+
+# ====================================================================================================
+# GENERAL PERFORMANCE — SUMMARY ACROSS DATASETS (BTN-Kernel vs. GP)
+# ====================================================================================================
+#  Dataset  N runs          RMSE GP RMSE Effective R Total runtime (s)
+#  Airfoil      10 1.738 ± 0.149     N/A   9.5 ± 0.5             49.14
+# Concrete      10 5.391 ± 1.275     N/A   5.3 ± 0.5             50.50
+#   Energy      10 0.496 ± 0.143     N/A  10.1 ± 1.3             66.20
+#    Yacht      10 0.368 ± 0.126     N/A   5.2 ± 0.6             26.06
+
+# ====================================================================================================
+# UNCERTAINTY QUANTIFICATION VALIDATION (NLL, COVERAGE, ANALYTIC vs. MC vs. GP) — SUMMARY ACROSS DATASETS
+# ====================================================================================================
+#  Dataset  N runs  Analytic NLL        MC NLL GP NLL Analytic Cov. (%)    MC Cov. (%) GP Cov. (%)
+#  Airfoil      10 1.976 ± 0.096 1.977 ± 0.119    N/A    94.702 ± 1.777 91.921 ± 0.973         N/A
+# Concrete      10 3.344 ± 0.409 3.336 ± 0.423    N/A    88.058 ± 3.420 87.184 ± 4.529         N/A
+#   Energy      10 1.528 ± 0.279 0.856 ± 0.654    N/A    99.351 ± 0.871 87.143 ± 4.125         N/A
+#    Yacht      10 1.010 ± 0.415 0.821 ± 1.164    N/A   100.000 ± 0.000 87.742 ± 6.419         N/A
+# ====================================================================================================
