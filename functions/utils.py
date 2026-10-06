@@ -46,14 +46,10 @@ def columnwise_kronecker(A, B):
     m, n = A.shape
     p, _ = B.shape
 
-    # Initialize the result matrix
-    K = np.zeros((m * p, n))
-
-    # Calculate columnwise Kronecker product
-    for i in range(n):
-        K[:, i] = np.kron(A[:, i], B[:, i])
-
-    return K
+    # Vectorized: column i is kron(A[:, i], B[:, i]), i.e. entry (a*p + b, i)
+    # = A[a, i] * B[b, i]. One broadcasted multiply instead of a Python loop
+    # with n separate np.kron calls.
+    return (A[:, None, :] * B[None, :, :]).reshape(m * p, n)
 
 
 def dotkron(*matrices):
@@ -78,8 +74,11 @@ def dotkron(*matrices):
         if r1 != r2:
             raise ValueError("Matrices should have equal rows!")
 
-        # Row-wise right-Kronecker product for two matrices
-        y = np.tile(L, (1, c2)) * np.kron(R, np.ones((1, c1)))
+        # Row-wise right-Kronecker product for two matrices.
+        # Column j*c1 + i holds L[:, i] * R[:, j] (L index varies fastest),
+        # identical to the old tile/kron version but with a single
+        # broadcasted multiply and one allocation.
+        y = (R[:, :, None] * L[:, None, :]).reshape(r1, c1 * c2)
 
     elif len(matrices) == 3:
         L, M, R = matrices
@@ -100,13 +99,20 @@ def dotkron(*matrices):
 
 
 def temp(
-    Phi, V, R
+    Phi, V, R, Phi2=None
 ):  # her bir RXR block'u vectorize edip rowlarina koyuyor yeni matrix'in
+    """
+    Phi2 : optional precomputed dotkron(Phi, Phi), shape (N, I*I).
+           Phi never changes during training, so pass this in to avoid
+           rebuilding the (N, I^2) array on every call.
+    """
     I = Phi.shape[1]
     V = np.reshape(V, (I, R, I, R), order="F")
     V_permuted = np.transpose(V, axes=(0, 2, 1, 3))
     result = np.reshape(V_permuted, (I**2, R**2))
-    return dotkron(Phi, Phi) @ result
+    if Phi2 is None:
+        Phi2 = dotkron(Phi, Phi)
+    return Phi2 @ result
 
 
 def dotkronX(A, B, y):
@@ -138,14 +144,16 @@ def dotkronX(A, B, y):
 
     batch_size = 10000
     for n in range(0, N, batch_size):
-        idx = min(n + batch_size - 1, N)  # Ensure we don't exceed N
+        # Slice end is exclusive, so n + batch_size covers every row.
+        # (The old n + batch_size - 1 silently dropped one row per batch.)
+        idx = min(n + batch_size, N)
 
-        temp = (np.tile(A[n:idx, :], (1, DB))) * (
-            np.kron(B[n:idx, :], np.ones((1, DA)))
-        )
+        # Same column ordering as before (A index fastest), built with one
+        # broadcasted multiply instead of np.tile + np.kron.
+        Kb = dotkron(A[n:idx, :], B[n:idx, :])
 
-        CC += temp.T @ temp  # Accumulate Kronecker product
-        Cy += temp.T @ y[n:idx, :]
+        CC += Kb.T @ Kb  # Accumulate Kronecker product
+        Cy += Kb.T @ y[n:idx, :]
 
     return CC, Cy
 

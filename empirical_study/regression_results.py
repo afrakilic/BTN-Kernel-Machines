@@ -13,7 +13,7 @@ from config import *  # Import everything from config.py
 RESULTS_PATH = "data/uq_validation_all_runs.csv"
 RUNTIMES_PATH = "data/uq_validation_runtimes.csv"
 
-GP_BASE_PATH = "/Users/hakilic/Desktop/submissions/SIAM/T-KRR-SIAM"
+GP_BASE_PATH = "/T-KRR-SIAM"
 GP_FILES = {
     "airfoil": "airfoil_all_runs_gp.csv",
     "concrete": "concrete_all_runs_gp.csv",
@@ -163,15 +163,14 @@ print("=" * 100)
 print(f"\nTotal runtime across all datasets: {runtimes_df['runtime_seconds'].sum():.2f} seconds")
 
 
-
 # ====================================================================================================
 # GENERAL PERFORMANCE — SUMMARY ACROSS DATASETS (BTN-Kernel vs. GP)
 # ====================================================================================================
 #  Dataset  N runs          RMSE GP RMSE Effective R Total runtime (s)
-#  Airfoil      10 1.738 ± 0.149     N/A   9.5 ± 0.5             49.14
-# Concrete      10 5.391 ± 1.275     N/A   5.3 ± 0.5             50.50
-#   Energy      10 0.496 ± 0.143     N/A  10.1 ± 1.3             66.20
-#    Yacht      10 0.368 ± 0.126     N/A   5.2 ± 0.6             26.06
+#  Airfoil      10 1.738 ± 0.149     N/A   9.5 ± 0.5             40.48
+# Concrete      10 5.391 ± 1.275     N/A   5.3 ± 0.5             58.45
+#   Energy      10 0.496 ± 0.143     N/A  10.1 ± 1.3             68.50
+#    Yacht      10 0.368 ± 0.126     N/A   5.2 ± 0.6             17.35
 
 # ====================================================================================================
 # UNCERTAINTY QUANTIFICATION VALIDATION (NLL, COVERAGE, ANALYTIC vs. MC vs. GP) — SUMMARY ACROSS DATASETS
