@@ -20,12 +20,13 @@ from tqdm import trange
 
 from .utils import (
     features,
-    dotkron,
     columnwise_kronecker,
-    phi_cov,
-    gram_and_rhs,
     safe_division,
     safelog,
+    sym_pairs,
+    moments_sym,
+    cov_blocks,
+    phi_cov_pairs,
 )
 
 
@@ -51,6 +52,7 @@ class BTNKM:
         rank_tol=1e-5,
         lower_bound_tol=1e-4,
         verbose=True,
+        cache_cov=True,
     ):
         """Fit the model.
 
@@ -60,6 +62,8 @@ class BTNKM:
         c0, d0    : Gamma prior of the rank precisions lambda
         g0, h0    : Gamma prior of the feature precisions delta
         rank_tol  : rank components explaining less than this % of the variance are pruned
+        cache_cov : keep each factor's covariance term in memory (D x N x R(R+1)/2 floats)
+                    instead of recomputing it; same results, faster
 
         After training, the model stores:
           rank          final rank R_eff
@@ -88,15 +92,26 @@ class BTNKM:
         WSigma_D = [0.1 * np.kron(np.eye(R), np.eye(I)) for _ in range(D)]
 
         Phi = features(X, M)
+        iu, ju, pos = sym_pairs(I)  # symmetric pairs of kron(phi_n, phi_n)
+        # hadamard_V holds symmetric R x R blocks per sample: keep only the pairs r <= r'
+        ru, rv, posR = sym_pairs(R)
+
+        def cov_term(d):
+            # phi_n^T Sigma_d(r, r') phi_n for all samples n and rank pairs r <= r'
+            return phi_cov_pairs(Phi[d], cov_blocks(WSigma_D[d], I, R, ru, rv), ru.size)
 
         LB = np.zeros(max_iter)
         rank_history = []
 
         # Hadamard products over all factors of the second moments and of the means
-        hadamard_V = np.ones((N, R**2))
+        hadamard_V = np.ones((N, ru.size))
         hadamard_mean = np.ones((N, R))
+        cache = [None] * D  # covariance term of every factor (if cache_cov), so it is not recomputed
         for d in range(D):
-            hadamard_V = hadamard_V * phi_cov(Phi[d], WSigma_D[d], R)
+            term = cov_term(d)
+            if cache_cov:
+                cache[d] = term
+            hadamard_V = hadamard_V * term
             hadamard_mean = hadamard_mean * (Phi[d] @ W_D[d])
 
         pbar = trange(max_iter, desc="Training", leave=True, disable=not verbose)
@@ -104,20 +119,19 @@ class BTNKM:
 
             # ---- Factor updates q(W^(d)) ----
             for d in range(D):
-                # remove factor d from the running products
-                hadamard_V = safe_division(hadamard_V, phi_cov(Phi[d], WSigma_D[d], R))
+                # remove factor d from the running products and build
+                # E[G G^T] = mean part + covariance part
                 hadamard_mean = safe_division(hadamard_mean, Phi[d] @ W_D[d])
-
-                # E[G G^T] = mean part (cc) + covariance part (V_temp)
-                PhiPhi_V = dotkron(Phi[d], Phi[d]).T @ hadamard_V
-                cc, cy = gram_and_rhs(Phi[d], hadamard_mean, y)
-                V_temp = np.reshape(
+                hadamard_V = safe_division(hadamard_V, cache[d] if cache_cov else cov_term(d))
+                PhiPhi_V = moments_sym(Phi[d], hadamard_V, hadamard_mean, iu, ju, ru, rv)[pos][:, posR]
+                EGG = np.reshape(
                     np.transpose(np.reshape(PhiPhi_V, (I, I, R, R), order="F"), axes=(0, 2, 1, 3)),
                     (I * R, I * R),
                     order="F",
                 )
+                cy = (Phi[d].T @ (hadamard_mean * np.reshape(y, (-1, 1)))).reshape(-1, 1, order="F")
 
-                A = tau * (cc + V_temp) + np.kron(lambda_R * np.eye(R), delta[d] * np.eye(I))
+                A = tau * EGG + np.kron(lambda_R * np.eye(R), delta[d] * np.eye(I))
                 try:
                     WSigma_D[d] = np.linalg.inv(A)
                 except np.linalg.LinAlgError:
@@ -125,7 +139,10 @@ class BTNKM:
                 W_D[d] = np.reshape(tau * WSigma_D[d] @ cy, (I, R), order="F")
 
                 # add the updated factor back
-                hadamard_V = hadamard_V * phi_cov(Phi[d], WSigma_D[d], R)
+                term = cov_term(d)
+                if cache_cov:
+                    cache[d] = term
+                hadamard_V = hadamard_V * term
                 hadamard_mean = hadamard_mean * (Phi[d] @ W_D[d])
 
             # ---- Feature precisions q(delta_d) ----
@@ -165,7 +182,7 @@ class BTNKM:
             # ---- Noise precision q(tau) ----
             residual = y - np.sum(hadamard_mean, axis=1)
             ss_error = np.dot(residual, residual)
-            covariance = np.sum(np.sum(hadamard_V, axis=1))
+            covariance = np.sum(hadamard_V @ np.where(ru == rv, 1.0, 2.0))  # off-diagonal pairs count twice
             if precision_update:
                 a_N = a0 + (N / 2)
                 b_N = b0 + (0.5 * (ss_error + covariance))
@@ -197,13 +214,15 @@ class BTNKM:
                         WSigma_D[d] = np.delete(WSigma_D[d], rows, axis=1)
                         WSigma_D[d] = np.delete(WSigma_D[d], rows, axis=0)
                     hadamard_mean = np.delete(hadamard_mean, removed, axis=1)
-                    # hadamard_V holds R x R blocks: drop every row/column of a removed component
-                    hadamard_V = np.delete(
-                        hadamard_V, [i * R + j for i in range(R) for j in range(R) if i in removed or j in removed], axis=1
-                    )
+                    # drop every rank pair that involves a removed component
+                    keep = ~(np.isin(ru, removed) | np.isin(rv, removed))
+                    hadamard_V = hadamard_V[:, keep]
+                    if cache_cov:
+                        cache = [C[:, keep] for C in cache]
                     c0 = c0[:rankest]
                     d0 = d0[:rankest]
                     R = rankest
+                    ru, rv, posR = sym_pairs(R)
             rank_history.append(R)
 
             # ---- Convergence check ----
@@ -229,11 +248,12 @@ class BTNKM:
     def _lower_bound(W_D, WSigma_D, lambda_R, delta, ss_error, a_N, b_N, b0, c_N, d_N, d0, g_N, h_N, h0, I, R):
         """Variational lower bound (up to constants); only used to check convergence."""
         t1 = -0.5 * (a_N / b_N) * ss_error
-        t2 = np.zeros((I * R, I * R))
+        # trace(kron(diag(lambda), diag(delta)) (w w^T + Sigma)) only needs the diagonal of (w w^T + Sigma)
+        t2 = 0.0
         for d in range(len(W_D)):
             w = W_D[d].ravel(order="F")
-            t2 += np.kron(lambda_R * np.eye(R), delta[d] * np.eye(I)) @ (np.outer(w, w) + WSigma_D[d])
-        t2 = -0.5 * np.trace(t2)
+            t2 += np.kron(lambda_R, np.ravel(delta[d])) @ (w**2 + np.diag(WSigma_D[d]))
+        t2 = -0.5 * t2
         t3 = 0.5 * np.sum([safelog(np.linalg.slogdet(S)) for S in WSigma_D])
         t4 = np.sum(np.multiply(c_N, (1 - safelog(d_N) - (d0 / d_N))))
         t5 = sum(
@@ -256,23 +276,24 @@ class BTNKM:
         N, D = X.shape[0], len(self.W_D)
         R = self.W_D[0].shape[1]
 
+        PW = [Phi[k] @ self.W_D[k] for k in range(D)]
         prod = np.ones((N, R))
         for d in range(D):
-            prod = np.multiply(prod, Phi[d] @ self.W_D[d])
+            prod = np.multiply(prod, PW[d])
         mean = np.sum(prod, axis=1)
 
-        # sum over factors of g_d(x)^T Sigma_d g_d(x)
-        quad = 0
+        # sum over factors of g_d(x)^T Sigma_d g_d(x), one value per test point
+        quad = np.zeros(N)
         for d in range(D):
             others = np.ones((N, R))
             for k in range(D):
                 if k != d:
-                    others *= Phi[k] @ self.W_D[k]
+                    others *= PW[k]
             g = columnwise_kronecker(Phi[d].T, others.T)
-            quad += g.T @ self.V[d] @ g
+            quad += np.sum((g.T @ self.V[d]) * g.T, axis=1)
 
         S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (quad / (D * self.M * R)))
-        std = np.sqrt(np.diag(S))
+        std = np.sqrt(S)
         return mean, std
 
     def mc_predict(self, X, S=3000, y_true=None, seed=None):

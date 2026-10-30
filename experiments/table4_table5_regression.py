@@ -40,6 +40,7 @@ for name, cfg in DATASETS.items():
 
     start = time.time()
     for run in range(N_RUNS):
+        t0 = time.time()
         X_train, X_test, y_train, y_test = split(X, y, seed=run)
         y_mean, y_std = y_train.mean(), y_train.std()
         y_train = (y_train - y_mean) / y_std
@@ -68,11 +69,13 @@ for name, cfg in DATASETS.items():
             mc_coverage=np.mean((y_test >= lower) & (y_test <= upper)) * 100,
             std_ratio=np.mean(std / (mc["std"] * y_std)),
             R_effective=model.rank,
+            run_time=time.time() - t0,  # time of this run (s)
         )
         rows.append(row)
         print(
             f"  run {run}: RMSE={row['rmse']:.4f}  NLL={row['analytic_nll']:.4f} (MC {row['mc_nll']:.4f})  "
-            f"cov={row['analytic_coverage']:.1f}% (MC {row['mc_coverage']:.1f}%)  R={row['R_effective']}"
+            f"cov={row['analytic_coverage']:.1f}% (MC {row['mc_coverage']:.1f}%)  R={row['R_effective']}  "
+            f"time={row['run_time']:.2f} s"
         )
     runtimes.append(dict(dataset=name, runtime_seconds=time.time() - start))
 

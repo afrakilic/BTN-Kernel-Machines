@@ -23,30 +23,48 @@ from btnkm.data import load_csv, split, classification_nll
 # n_features: number of input columns (the next column is the label)
 DATASETS = {
     "spambase": dict(n_features=57, M=30, R=10, c0=1e-5),
-    "adult":    dict(n_features=96, M=40, R=10, c0=1e-6),
+    # "adult":    dict(n_features=96, M=40, R=10, c0=1e-6),
 }
 
-name = sys.argv[1] if len(sys.argv) > 1 else "spambase"
-cfg = DATASETS[name]
-data = load_csv(name)
-X = data[:, : cfg["n_features"]]
-y = np.where(data[:, cfg["n_features"]] > 0, 1, -1)
+names = sys.argv[1:] or list(DATASETS)
+for name in names:
+    cfg = DATASETS[name]
+    data = load_csv(name)
+    X = data[:, : cfg["n_features"]]
+    y = np.where(data[:, cfg["n_features"]] > 0, 1, -1)
 
-errors, nlls, ranks = [], [], []
-start = time.time()
-for run in range(10):
-    X_train, X_test, y_train, y_test = split(X, y, seed=run)
-    model = BTNKM().train(
-        X_train, y_train, M=cfg["M"], R=cfg["R"],
-        a0=1e-2, b0=1e-3, c0=cfg["c0"], d0=1e-6, g0=1e-6, h0=1e-6, max_iter=50,
-    )
-    mean, std = model.predict(X_test)
-    errors.append(1 - accuracy_score(y_test, np.sign(mean)))
-    nlls.append(classification_nll(y_test, mean, std))
-    ranks.append(model.rank)
-    print(f"  run {run}: error={errors[-1]:.4f}  NLL={nlls[-1]:.4f}  R={model.rank}")
+    errors, nlls, ranks = [], [], []
+    run_times = []  # time of each run (s)
+    start = time.time()
+    for run in range(10):
+        t0 = time.time()
+        X_train, X_test, y_train, y_test = split(X, y, seed=run)
+        model = BTNKM().train(
+            X_train, y_train, M=cfg["M"], R=cfg["R"],
+            a0=1e-2, b0=1e-3, c0=cfg["c0"], d0=1e-6, g0=1e-6, h0=1e-6, max_iter=50,
+        )
+        mean, std = model.predict(X_test)
+        errors.append(1 - accuracy_score(y_test, np.sign(mean)))
+        nlls.append(classification_nll(y_test, mean, std))
+        ranks.append(model.rank)
+        run_times.append(time.time() - t0)
+        print(f"  run {run}: error={errors[-1]:.4f}  NLL={nlls[-1]:.4f}  R={model.rank}"
+              f"  time={run_times[-1]:.2f} s")
 
-print(f"\n{name}: total runtime for 10 runs: {time.time() - start:.2f} s")
-print(f"Misclassification: {np.mean(errors):.4f} ± {np.std(errors):.4f}")
-print(f"NLL:               {np.mean(nlls):.4f} ± {np.std(nlls):.4f}")
-print(f"Effective R:       {np.mean(ranks):.1f} ± {np.std(ranks):.1f}")
+    print(f"\n{name}: total runtime for 10 runs: {time.time() - start:.2f} s")
+    print(f"Misclassification: {np.mean(errors):.4f} ± {np.std(errors):.4f}")
+    print(f"NLL:               {np.mean(nlls):.4f} ± {np.std(nlls):.4f}")
+    print(f"Effective R:       {np.mean(ranks):.1f} ± {np.std(ranks):.1f}")
+    print(f"Time per run:      {np.mean(run_times):.2f} ± {np.std(run_times):.2f} s") 
+
+# spambase: total runtime for 10 runs: 855.24 s
+# Misclassification: 0.0599 ± 0.0068
+# NLL:               0.2279 ± 0.0542
+# Effective R:       4.2 ± 1.1
+# Time per run:      85.52 ± 15.86 s
+
+# adult: total runtime for 10 runs: 20312.93 s
+# Misclassification: 0.1434 ± 0.0044
+# NLL:               0.3373 ± 0.0106
+# Effective R:       6.3 ± 0.5
+# Time per run:      2031.29 ± 142.21 s
