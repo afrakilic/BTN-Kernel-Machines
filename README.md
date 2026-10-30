@@ -1,25 +1,29 @@
+Claude
+
+
+Readme · MD
 # Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection
-
+ 
 [![Source Code License](https://img.shields.io/badge/license-GPL-blueviolet)](https://github.com/afrakilic/BTN-Kernel-Machines/blob/main/LICENSE)
-
+ 
 Code for the paper [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection](https://arxiv.org/abs/2507.11136) (submitted to the SIAM/ASA Journal on Uncertainty Quantification).
-
+ 
 BTN-Kernel machines place sparsity-inducing hierarchical priors on the factors of a CP-decomposed
 weight tensor. Variational inference then infers the tensor rank and the feature dimensions
 automatically and gives a closed-form predictive distribution.
-
+ 
 ## Installation
-
+ 
 Python 3.10 was used.
-
+ 
 ```bash
 git clone https://github.com/afrakilic/BTN-Kernel-Machines
 cd BTN-Kernel-Machines
 pip install -r requirements.txt
 ```
-
+ 
 ## Repository structure
-
+ 
 ```
 btnkm/              the model
   model.py            BTNKM class: train, predict, mc_predict
@@ -30,22 +34,22 @@ data/               UCI data sets
 results/            saved results and figures
 T-KRR-SIAM/         T-KRR and GP baselines (MATLAB)
 ```
-
+ 
 ## Usage
-
+ 
 ```python
 from btnkm import BTNKM
-
+ 
 model = BTNKM().train(X_train, y_train, M=20, R=25,
                       a0=1e-3, b0=1e-3, c0=1e-5, d0=1e-6, g0=1e-6, h0=1e-6, max_iter=50)
 mean, std = model.predict(X_test)        # Student's-t predictive, nu = 2 * model.a
 print(model.rank)                        # inferred rank
 ```
-
+ 
 ## Reproducing the paper
-
+ 
 Run the scripts from any folder; each one prints its table and/or saves its figure to `results/`.
-
+ 
 | Paper                 | Script                                                          |
 |-----------------------|-----------------------------------------------------------------|
 | Figure 2              | `python experiments/figure2_synthetic.py`                       |
@@ -54,17 +58,37 @@ Run the scripts from any folder; each one prints its table and/or saves its figu
 | Figure 4 and Table 3  | `python experiments/figure4_table3_feature_precision.py`        |
 | Tables 4 and 5 (regression) | `python experiments/table4_table5_regression.py`, then `python experiments/table4_table5_summary.py` |
 | Table 4 (classification)    | `python experiments/table4_classification.py spambase` (or `adult`) |
-
+ 
 `results/regression_runs.csv` and `results/regression_runtimes.csv` contain the results
 used in the paper, so `table4_table5_summary.py` can be run directly. The GP baseline
 predictions are read from `T-KRR-SIAM/<dataset>_all_runs_gp.csv`.
-
+ 
 All experiments use fixed random seeds. They were run on a MacBook Pro (Apple M2 Pro, 16 GB,
 macOS 15.5); other operating systems, hardware or library versions may give slightly
-different numbers. The Adult experiment takes about 18 hours.
-
+different numbers. The Adult experiment takes about 6 hours.
+ 
+## Results
+ 
+UCI benchmarks, 10 random 90/10 splits, mean ± standard deviation over the splits. Times are per
+split; for regression, the time per split includes the Monte Carlo check.
+ 
+| Data set | RMSE | Analytic NLL | MC NLL | Analytic cov. (%) | MC cov. (%) | Effective rank | Time per split (s) |
+|----------|------|--------------|--------|-------------------|-------------|----------------|--------------------|
+| Airfoil  | 1.738 ± 0.149 | 1.976 ± 0.096 | 1.977 ± 0.119 | 94.7 ± 1.8  | 91.9 ± 1.0 | 9.5 ± 0.5  | 4.19 ± 0.97 |
+| Concrete | 5.391 ± 1.275 | 3.344 ± 0.409 | 3.336 ± 0.423 | 88.1 ± 3.4  | 87.2 ± 4.5 | 5.3 ± 0.5  | 4.74 ± 1.55 |
+| Energy   | 0.496 ± 0.143 | 1.528 ± 0.279 | 0.856 ± 0.654 | 99.4 ± 0.9  | 87.1 ± 4.1 | 10.1 ± 1.3 | 6.97 ± 2.04 |
+| Yacht    | 0.368 ± 0.126 | 1.010 ± 0.415 | 0.821 ± 1.164 | 100.0 ± 0.0 | 87.7 ± 6.4 | 5.2 ± 0.6  | 1.61 ± 0.19 |
+ 
+| Data set | Misclassification | NLL | Effective rank | Time per split (s) |
+|----------|-------------------|-----|----------------|--------------------|
+| Spambase | 0.060 ± 0.007 | 0.228 ± 0.054 | 4.2 ± 1.1 | 85.52 ± 15.86 |
+| Adult    | 0.143 ± 0.004 | 0.337 ± 0.011 | 6.3 ± 0.5 | 2031.29 ± 142.21 |
+ 
+The GP baseline (RMSE, NLL and coverage) is printed by `table4_table5_summary.py` next to these
+results.
+ 
 ## Citation
-
+ 
 ```bibtex
 @misc{kilic2025interpretablebayesiantensornetwork,
       title={Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection},
@@ -76,12 +100,14 @@ different numbers. The Adult experiment takes about 18 hours.
       url={https://arxiv.org/abs/2507.11136},
 }
 ```
-
+ 
 ## License and author
-
+ 
 GNU General Public License, see [LICENSE](LICENSE).
-
+ 
 [Afra Kilic](https://www.tudelft.nl/staff/h.a.kilic/), PhD candidate, [Delft Center for Systems and Control](https://www.tudelft.nl/en/3me/about/departments/delft-center-for-systems-and-control/), Delft University of Technology (H.A.Kilic@tudelft.nl | hafra.kilic@gmail.com).
 This research is part of the project Sustainable learning for Artificial Intelligence from noisy large-scale data (project number VI.Vidi.213.017), financed by the Dutch Research Council (NWO).
-
+ 
 Copyright (c) 2025 Afra Kilic. Technische Universiteit Delft hereby disclaims all copyright interest.
+ 
+Claude finished the response
