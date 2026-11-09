@@ -22,8 +22,8 @@ from btnkm.data import load_csv, split, classification_nll
 
 # n_features: number of input columns (the next column is the label)
 DATASETS = {
-    "spambase": dict(n_features=57, M=30, R=10, c0=1e-5),
-    # "adult":    dict(n_features=96, M=40, R=10, c0=1e-6),
+    # "spambase": dict(n_features=57, M=30, R=10, c0=1e-5),
+    "adult":    dict(n_features=96, M=40, R=10, c0=1e-6),
 }
 
 names = sys.argv[1:] or list(DATASETS)
@@ -56,12 +56,13 @@ for name in names:
     print(f"NLL:               {np.mean(nlls):.4f} ± {np.std(nlls):.4f}")
     print(f"Effective R:       {np.mean(ranks):.1f} ± {np.std(ranks):.1f}")
     print(f"Time per run:      {np.mean(run_times):.2f} ± {np.std(run_times):.2f} s") 
+    
 
-# spambase: total runtime for 10 runs: 855.24 s
+# spambase: total runtime for 10 runs: 833.61 s
 # Misclassification: 0.0599 ± 0.0068
-# NLL:               0.2279 ± 0.0542
+# NLL:               0.1922 ± 0.0335
 # Effective R:       4.2 ± 1.1
-# Time per run:      85.52 ± 15.86 s
+# Time per run:      83.36 ± 8.36 s
 
 # adult: total runtime for 10 runs: 20312.93 s
 # Misclassification: 0.1434 ± 0.0044

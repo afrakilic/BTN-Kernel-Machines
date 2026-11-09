@@ -119,8 +119,6 @@ class BTNKM:
 
             # ---- Factor updates q(W^(d)) ----
             for d in range(D):
-                # remove factor d from the running products and build
-                # E[G G^T] = mean part + covariance part
                 hadamard_mean = safe_division(hadamard_mean, Phi[d] @ W_D[d])
                 hadamard_V = safe_division(hadamard_V, cache[d] if cache_cov else cov_term(d))
                 PhiPhi_V = moments_sym(Phi[d], hadamard_V, hadamard_mean, iu, ju, ru, rv)[pos][:, posR]
@@ -192,7 +190,7 @@ class BTNKM:
 
             # ---- Variational lower bound ----
             LB[it] = self._lower_bound(
-                W_D, WSigma_D, lambda_R, delta, ss_error, a_N, b_N, b0, c_N, d_N, d0, g_N, h_N, h0, I, R
+                W_D, WSigma_D, lambda_R, delta, ss_error + covariance , a_N, b_N, b0, c_N, d_N, d0, g_N, h_N, h0, I, R
             )
 
             # ---- Rank pruning ----
@@ -289,10 +287,10 @@ class BTNKM:
             for k in range(D):
                 if k != d:
                     others *= PW[k]
-            g = columnwise_kronecker(Phi[d].T, others.T)
+            g = columnwise_kronecker(others.T, Phi[d].T)
             quad += np.sum((g.T @ self.V[d]) * g.T, axis=1)
 
-        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (quad / (D * self.M * R)))
+        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (quad))
         std = np.sqrt(S)
         return mean, std
 
