@@ -66,6 +66,6 @@ for name in names:
 
 # adult: total runtime for 10 runs: 20312.93 s
 # Misclassification: 0.1434 ± 0.0044
-# NLL:               0.3373 ± 0.0106
+# NLL:               0.3296 ± 0.0083
 # Effective R:       6.3 ± 0.5
 # Time per run:      2031.29 ± 142.21 s

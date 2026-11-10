@@ -33,6 +33,39 @@ def columnwise_kronecker(A, B):
     return (A[:, None, :] * B[None, :, :]).reshape(m * p, n)
 
 
+def dotkron(L, R):
+    """Row-wise Kronecker product: row n is kron(R[n], L[n])."""
+    N, c1 = L.shape
+    c2 = R.shape[1]
+    if R.shape[0] != N:
+        raise ValueError("Matrices should have equal rows!")
+    return (R[:, :, None] * L[:, None, :]).reshape(N, c1 * c2)
+
+
+def phi_cov(Phi, V, R):
+    """Per-sample second-moment term of one factor's covariance.
+
+    Row n holds the R x R block phi_n^T V_(r, r') phi_n, flattened to R^2 entries.
+    """
+    I = Phi.shape[1]
+    V = np.reshape(V, (I, R, I, R), order="F").transpose(0, 2, 1, 3)
+    return dotkron(Phi, Phi) @ np.reshape(V, (I**2, R**2))
+
+
+def gram_and_rhs(A, B, y, batch_size=10000):
+    """Return K^T K and K^T y for K = dotkron(A, B), built in batches."""
+    N, DA = A.shape
+    DB = B.shape[1]
+    KK = np.zeros((DA * DB, DA * DB))
+    Ky = np.zeros((DA * DB, 1))
+    y = y.reshape(-1, 1)
+    for n in range(0, N, batch_size):
+        end = min(n + batch_size, N)
+        K = dotkron(A[n:end], B[n:end])
+        KK += K.T @ K
+        Ky += K.T @ y[n:end]
+    return KK, Ky
+
 def safe_division(X, A, epsilon=1):
     """X / A, with zeros in A replaced by epsilon."""
     return X / np.where(A == 0, epsilon, A)
