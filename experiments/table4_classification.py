@@ -4,8 +4,8 @@ Labels are mapped to {-1, +1}, the model is fitted as a regression and the
 predicted class is the sign of the predictive mean. Reports the
 misclassification rate, NLL and effective rank over 10 random 90/10 splits.
 
-Usage:  python experiments/table4_classification.py spambase
-        python experiments/table4_classification.py adult     (slow: ~18 h)
+Usage:  python experiments/table4_classification.py spambase     (~8 min)
+        python experiments/table4_classification.py adult        (slow: ~5.5 h)
 """
 
 import sys
@@ -23,7 +23,7 @@ from btnkm.data import load_csv, split, classification_nll
 # n_features: number of input columns (the next column is the label)
 DATASETS = {
     # "spambase": dict(n_features=57, M=30, R=10, c0=1e-5),
-    "adult":    dict(n_features=96, M=40, R=10, c0=1e-6),
+    "adult":    dict(n_features=96, M=40, R=10, c0=1e-6)
 }
 
 names = sys.argv[1:] or list(DATASETS)
@@ -41,7 +41,7 @@ for name in names:
         X_train, X_test, y_train, y_test = split(X, y, seed=run)
         model = BTNKM().train(
             X_train, y_train, M=cfg["M"], R=cfg["R"],
-            a0=1e-2, b0=1e-3, c0=cfg["c0"], d0=1e-6, g0=1e-6, h0=1e-6, max_iter=50,
+            a0=1e-2, b0=1e-3, c0=cfg["c0"], d0=1e-6, g0=1e-6, h0=1e-6, max_iter=50
         )
         mean, std = model.predict(X_test)
         errors.append(1 - accuracy_score(y_test, np.sign(mean)))
@@ -57,15 +57,24 @@ for name in names:
     print(f"Effective R:       {np.mean(ranks):.1f} ± {np.std(ranks):.1f}")
     print(f"Time per run:      {np.mean(run_times):.2f} ± {np.std(run_times):.2f} s") 
     
+# ANNEALING SWEEPS = 20
 
-# spambase: total runtime for 10 runs: 833.61 s
-# Misclassification: 0.0599 ± 0.0068
-# NLL:               0.1922 ± 0.0335
-# Effective R:       4.2 ± 1.1
-# Time per run:      83.36 ± 8.36 s
+# spambase: total runtime for 10 runs: 657.79 s
+# Misclassification: 0.1130 ± 0.0892
+# NLL:               0.2434 ± 0.1265
+# Effective R:       2.3 ± 0.9
+# Time per run:      65.78 ± 16.37 s
 
-# adult: total runtime for 10 runs: 20312.93 s
-# Misclassification: 0.1434 ± 0.0044
-# NLL:               0.3296 ± 0.0083
-# Effective R:       6.3 ± 0.5
-# Time per run:      2031.29 ± 142.21 s
+# adult: total runtime for 10 runs: 19549.88 s
+# Misclassification: 0.1449 ± 0.0052
+# NLL:               0.3324 ± 0.0067
+# Effective R:       4.1 ± 0.8
+# Time per run:      1954.99 ± 386.01 s
+
+# NO ANNEALING 
+
+# spambase: total runtime for 10 runs: 182.77 s
+# Misclassification: 1.0000 ± 0.0000
+# NLL:               0.6931 ± 0.0000
+# Effective R:       10.0 ± 0.0
+# Time per run:      18.28 ± 1.18 s

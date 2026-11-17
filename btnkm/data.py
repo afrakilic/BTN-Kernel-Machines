@@ -10,9 +10,11 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
 def load_csv(name):
-    """Load data/<name>.csv as a float array. The first row is always skipped (header)."""
+    """Load data/<name>.csv as a float array. The first row is skipped only if it is a header
+    (not numeric); energy.csv, for example, has no header."""
     df = pd.read_csv(DATA_DIR / f"{name}.csv", header=None, low_memory=False)
-    return df.iloc[1:].values.astype(float)
+    first_is_header = pd.to_numeric(df.iloc[0], errors="coerce").isna().any()
+    return (df.iloc[1:] if first_is_header else df).values.astype(float)
 
 
 def split(X, y, seed, train_frac=0.90):

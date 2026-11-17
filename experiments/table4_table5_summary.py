@@ -62,16 +62,37 @@ print(pd.DataFrame(uq).to_string(index=False))
 print(f"\nTotal runtime: {runtimes.sum():.2f} s")
 
 
+
+# ANNEALING SWEEPS = 20 
+
 # TABLE 4 (regression): accuracy, effective rank and run time
 #  Dataset          RMSE       GP RMSE Effective R Runtime (s) Time/run (s)
-#  Airfoil 1.738 ± 0.149 2.293 ± 0.189   9.5 ± 0.5       41.94  4.19 ± 0.97
-# Concrete 5.391 ± 1.275 5.565 ± 0.494   5.3 ± 0.5       47.36  4.74 ± 1.55
-#   Energy 0.496 ± 0.143 1.296 ± 0.275  10.1 ± 1.3       69.67  6.97 ± 2.04
-#    Yacht 0.368 ± 0.126 0.402 ± 0.124   5.2 ± 0.6       16.11  1.61 ± 0.19
+#  Airfoil 1.723 ± 0.180 2.293 ± 0.189   9.4 ± 0.8       75.05  7.51 ± 1.38
+# Concrete 4.969 ± 0.487 5.565 ± 0.494   8.3 ± 0.5      125.74 12.57 ± 2.83
+#   Energy 0.412 ± 0.060 0.448 ± 0.037   6.5 ± 0.7       62.95  6.30 ± 0.73
+#    Yacht 0.401 ± 0.154 0.402 ± 0.124   4.6 ± 0.7       34.21  3.42 ± 0.64
 
 # TABLE 5: NLL and 95% coverage (analytic vs. Monte Carlo vs. GP)
 #  Dataset  Analytic NLL        MC NLL        GP NLL Analytic Cov. (%) MC Cov. (%) GP Cov. (%)
-#  Airfoil 1.976 ± 0.096 1.977 ± 0.119 2.281 ± 0.080        94.7 ± 1.8  91.9 ± 1.0  95.2 ± 1.0
-# Concrete 3.344 ± 0.409 3.336 ± 0.423 3.078 ± 0.076        88.1 ± 3.4  87.2 ± 4.5  93.3 ± 2.1
-#   Energy 1.528 ± 0.279 0.856 ± 0.654 1.679 ± 0.214        99.4 ± 0.9  87.1 ± 4.1  93.0 ± 3.3
-#    Yacht 1.010 ± 0.415 0.821 ± 1.164 0.105 ± 0.319       100.0 ± 0.0  87.7 ± 6.4  92.6 ± 6.6
+#  Airfoil 1.940 ± 0.101 1.942 ± 0.103 2.281 ± 0.080        95.0 ± 1.2  95.0 ± 1.1  95.2 ± 1.0
+# Concrete 3.030 ± 0.140 3.020 ± 0.126 3.078 ± 0.076        91.3 ± 2.9  91.4 ± 2.9  93.3 ± 2.1
+#   Energy 0.537 ± 0.137 0.542 ± 0.137 0.608 ± 0.091        96.4 ± 2.0  96.4 ± 2.2  93.9 ± 2.0
+#    Yacht 0.347 ± 0.350 0.378 ± 0.388 0.105 ± 0.319        94.8 ± 4.1  94.8 ± 4.1  92.6 ± 6.6
+
+
+
+# NO ANNEALING
+
+# TABLE 4 (regression): accuracy, effective rank and run time
+#  Dataset          RMSE       GP RMSE Effective R Runtime (s) Time/run (s)
+#  Airfoil 1.700 ± 0.171 2.293 ± 0.189   7.8 ± 0.4       55.67  5.57 ± 0.65
+# Concrete 5.121 ± 0.524 5.565 ± 0.494   6.5 ± 0.5       80.73  8.07 ± 2.44
+#   Energy 0.433 ± 0.044 0.448 ± 0.037   5.0 ± 0.4       54.60  5.46 ± 0.73
+#    Yacht 0.584 ± 0.140 0.402 ± 0.124   2.9 ± 0.3       24.57  2.46 ± 0.19
+
+# TABLE 5: NLL and 95% coverage (analytic vs. Monte Carlo vs. GP)
+#  Dataset  Analytic NLL        MC NLL        GP NLL Analytic Cov. (%) MC Cov. (%) GP Cov. (%)
+#  Airfoil 1.940 ± 0.102 1.941 ± 0.101 2.281 ± 0.080        94.2 ± 1.2  94.1 ± 1.1  95.2 ± 1.0
+# Concrete 3.062 ± 0.129 3.071 ± 0.135 3.078 ± 0.076        92.6 ± 2.6  92.8 ± 2.5  93.3 ± 2.1
+#   Energy 0.600 ± 0.093 0.605 ± 0.097 0.608 ± 0.091        95.2 ± 1.9  95.5 ± 2.1  93.9 ± 2.0
+#    Yacht 0.812 ± 0.356 0.842 ± 0.422 0.105 ± 0.319        93.2 ± 2.7  92.3 ± 3.3  92.6 ± 6.6

@@ -1,12 +1,8 @@
-Claude
-
-
-Readme · MD
-# Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection
+# Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank Selection
  
 [![Source Code License](https://img.shields.io/badge/license-GPL-blueviolet)](https://github.com/afrakilic/BTN-Kernel-Machines/blob/main/LICENSE)
  
-Code for the paper [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection](https://arxiv.org/abs/2507.11136) (submitted to the SIAM/ASA Journal on Uncertainty Quantification).
+Code for the paper [Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank Selection](https://arxiv.org/abs/2507.11136) (submitted to the SIAM/ASA Journal on Uncertainty Quantification).
  
 BTN-Kernel machines place sparsity-inducing hierarchical priors on the factors of a CP-decomposed
 weight tensor. Variational inference then infers the tensor rank and the feature dimensions
@@ -65,24 +61,28 @@ predictions are read from `T-KRR-SIAM/<dataset>_all_runs_gp.csv`.
  
 All experiments use fixed random seeds. They were run on a MacBook Pro (Apple M2 Pro, 16 GB,
 macOS 15.5); other operating systems, hardware or library versions may give slightly
-different numbers. The Adult experiment takes about 6 hours.
+different numbers. The Adult experiment takes about 5.5 hours.
  
 ## Results
  
 UCI benchmarks, 10 random 90/10 splits, mean ± standard deviation over the splits. Times are per
-split; for regression, the time per split includes the Monte Carlo check.
+split and cover training and prediction; the Monte Carlo check is not included.
  
 | Data set | RMSE | Analytic NLL | MC NLL | Analytic cov. (%) | MC cov. (%) | Effective rank | Time per split (s) |
 |----------|------|--------------|--------|-------------------|-------------|----------------|--------------------|
-| Airfoil  | 1.738 ± 0.149 | 1.976 ± 0.096 | 1.977 ± 0.119 | 94.7 ± 1.8  | 91.9 ± 1.0 | 9.5 ± 0.5  | 4.19 ± 0.97 |
-| Concrete | 5.391 ± 1.275 | 3.344 ± 0.409 | 3.336 ± 0.423 | 88.1 ± 3.4  | 87.2 ± 4.5 | 5.3 ± 0.5  | 4.74 ± 1.55 |
-| Energy   | 0.496 ± 0.143 | 1.528 ± 0.279 | 0.856 ± 0.654 | 99.4 ± 0.9  | 87.1 ± 4.1 | 10.1 ± 1.3 | 6.97 ± 2.04 |
-| Yacht    | 0.368 ± 0.126 | 1.010 ± 0.415 | 0.821 ± 1.164 | 100.0 ± 0.0 | 87.7 ± 6.4 | 5.2 ± 0.6  | 1.61 ± 0.19 |
+| Airfoil  | 1.721 ± 0.177 | 1.939 ± 0.100 | 1.940 ± 0.100 | 94.8 ± 1.2 | 94.9 ± 1.1 | 9.4 ± 0.8 | 3.34 ± 0.66 |
+| Concrete | 4.977 ± 0.475 | 3.032 ± 0.139 | 3.024 ± 0.129 | 91.4 ± 3.0 | 91.3 ± 2.9 | 8.2 ± 0.6 | 6.20 ± 0.72 |
+| Energy   | 0.413 ± 0.059 | 0.539 ± 0.135 | 0.543 ± 0.134 | 96.1 ± 2.0 | 96.4 ± 2.2 | 6.5 ± 0.7 | 4.23 ± 1.63 |
+| Yacht    | 0.400 ± 0.175 | 0.339 ± 0.390 | 0.408 ± 0.499 | 95.5 ± 3.6 | 95.2 ± 4.4 | 4.6 ± 0.7 | 3.32 ± 2.83 |
  
 | Data set | Misclassification | NLL | Effective rank | Time per split (s) |
 |----------|-------------------|-----|----------------|--------------------|
-| Spambase | 0.060 ± 0.007 | 0.228 ± 0.054 | 4.2 ± 1.1 | 85.52 ± 15.86 |
-| Adult    | 0.143 ± 0.004 | 0.337 ± 0.011 | 6.3 ± 0.5 | 2031.29 ± 142.21 |
+| Spambase | 0.094 ± 0.083 | 0.213 ± 0.110 | 2.3 ± 0.8 | 49.54 ± 14.16 |
+| Adult    | 0.145 ± 0.005 | 0.332 ± 0.007 | 4.1 ± 0.8 | 1954.99 ± 386.01 |
+ 
+On Spambase, two of the ten splits converge to a rank-1 solution, which raises the mean and
+standard deviation of the error; on the remaining eight splits, the average misclassification
+error is 0.053.
  
 The GP baseline (RMSE, NLL and coverage) is printed by `table4_table5_summary.py` next to these
 results.
@@ -91,7 +91,7 @@ results.
  
 ```bibtex
 @misc{kilic2025interpretablebayesiantensornetwork,
-      title={Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank and Feature Selection},
+      title={Interpretable Bayesian Tensor Network Kernel Machines with Automatic Rank Selection},
       author={Afra Kilic and Kim Batselier},
       year={2025},
       eprint={2507.11136},
@@ -109,5 +109,3 @@ GNU General Public License, see [LICENSE](LICENSE).
 This research is part of the project Sustainable learning for Artificial Intelligence from noisy large-scale data (project number VI.Vidi.213.017), financed by the Dutch Research Council (NWO).
  
 Copyright (c) 2025 Afra Kilic. Technische Universiteit Delft hereby disclaims all copyright interest.
- 
-Claude finished the response

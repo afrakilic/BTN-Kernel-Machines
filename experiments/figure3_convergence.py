@@ -15,6 +15,9 @@ sys.path.insert(0, str(ROOT))
 from btnkm import BTNKM
 from btnkm.data import load_csv, split
 
+# number of input columns; the next column is the target
+# (Energy: 8 building inputs, heating load as target; cooling load is not used)
+N_INPUTS = {"concrete": 8, "energy": 8, "airfoil": 5}
 DATASETS = ["concrete", "energy", "airfoil"]
 M = 20
 R_MAX = [10, 25, 50]
@@ -23,7 +26,8 @@ STYLES = [("-", "o", "#A40000"), ("--", "s", "#00008B"), ("-.", "d", "#006B3C")]
 fig, axs = plt.subplots(2, 3, figsize=(15.5, 7))
 for col, name in enumerate(DATASETS):
     data = load_csv(name)
-    X_train, _, y_train, _ = split(data[:, :-1], data[:, -1], seed=1)
+    n = N_INPUTS[name]
+    X_train, _, y_train, _ = split(data[:, :n], data[:, n], seed=1)
     y_train = (y_train - y_train.mean()) / y_train.std()
 
     max_len = 0
@@ -31,10 +35,11 @@ for col, name in enumerate(DATASETS):
         model = BTNKM().train(
             X_train, y_train, M=M, R=r,
             a0=1e-3, b0=1e-3, c0=1e-5, d0=1e-6, g0=1e-6, h0=1e-6,
-            max_iter=150, lower_bound_tol=1e-10,
+            max_iter=150, lower_bound_tol=0,  # run all 150 iterations
         )
         style = dict(linestyle=ls, marker=marker, color=color, markersize=3)
-        axs[0, col].plot(model.rank_history, label=rf"$R_{{\max}} = {r}$", **style)
+        axs[0, col].plot(np.arange(1, len(model.rank_history) + 1), model.rank_history,
+                         label=rf"$R_{{\max}} = {r}$", **style)
         axs[1, col].plot(np.arange(1, len(model.lower_bound) + 1), model.lower_bound, alpha=0.8, **style)
         max_len = max(max_len, len(model.rank_history))
 

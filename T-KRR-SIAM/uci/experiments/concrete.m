@@ -1,4 +1,7 @@
 %% Concrete Dataset
+HERE    = fileparts(mfilename('fullpath'));                 % T-KRR-SIAM/uci/experiments
+OUT_DIR = fullfile(HERE, '..', '..');                       % T-KRR-SIAM
+addpath(genpath(fullfile(HERE, '..', 'utils')));            % CPLS, CPPredict and the GPML toolbox
 M = 20;
 R = 10;
 maxIte = 10;
@@ -14,7 +17,7 @@ all_pred_std = [];
 all_run_ids = [];
 warning('off','all');
 
-X_full = readmatrix('concrete.csv');
+X_full = readmatrix(fullfile(HERE, '..', 'data', 'concrete.csv'));
 Y_full = X_full(:, end);
 X_full = X_full(:, 1:end-1);
 
@@ -74,4 +77,4 @@ end
 
 T = table(all_run_ids, all_y_test, all_pred_mean, all_pred_std, ...
     'VariableNames', {'run', 'y_test', 'prediction_mean', 'prediction_std'});
-writetable(T, 'concrete_all_runs_gp.csv');
+writetable(T, fullfile(OUT_DIR, 'concrete_all_runs_gp.csv'));

@@ -10,24 +10,59 @@ Priors (all with Gamma hyperpriors):
 
 `train` runs mean-field variational inference (a Bayesian ALS sweep over the
 factors, then closed-form updates of delta, lambda and tau). `predict` returns the
-mean and std of the Student's-t predictive distribution, and `mc_predict`
+mean and std of the predictive distribution under q, and `mc_predict`
 samples the same predictive distribution by Monte Carlo as a check.
+
+Factor update (as in the paper), with ⊙ the row-wise Khatri-Rao product (row n of
+Phi ⊙ Phi is kron(phi_n, phi_n)) and ⊛ the Hadamard product:
+
+    E[G^T G] = R{ (Phi_d ⊙ Phi_d)^T  ⊛_{k != d} (Phi_k ⊙ Phi_k) (W_k ⊗ W_k + R{Sigma_k}) }
+    E[G]^T y = vec( Phi_d^T ( ⊛_{k != d} (Phi_k W_k)  *  y ) )
+    V_d      = ( E[tau] E[G^T G] + kron(diag(lambda), diag(delta_d)) )^-1
+    vec(W_d) = E[tau] V_d E[G]^T y
+
+W_k ⊗ W_k is the I^2 x R^2 Kronecker product of the mean factor with itself, and R{Sigma_k}
+is the IR x IR covariance rearranged to the same I^2 x R^2 layout. With use_sigma=False the
+R{Sigma_k} terms are left out of the sum, E[G^T G] becomes G^T G of the mean factors, and
+the factor update is the deterministic (ridge-regularised) ALS update.
 """
 
 import numpy as np
 from scipy.special import gammaln, logsumexp
 from tqdm import trange
 
-from .utils import (
-    features,
-    columnwise_kronecker,
-    safe_division,
-    safelog,
-    sym_pairs,
-    moments_sym,
-    cov_blocks,
-    phi_cov_pairs,
-)
+from .utils import features, dotkron, safelog
+
+
+# ---- Rearrangements and row-wise Khatri-Rao products used in the formulas above ----
+
+def rearrange_sigma(Sigma, I, R):
+    """R{Sigma}: the IR x IR covariance of vec(W) (column-major, index i + I*r) rearranged
+    into the I^2 x R^2 layout of kron(W, W): entry [i*I + j, r*R + r'] = Sigma[(i, r), (j, r')]."""
+    S4 = Sigma.reshape(R, I, R, I)  # S4[r, i, r', j] = Sigma[i + I r, j + I r']
+    return S4.transpose(1, 3, 0, 2).reshape(I * I, R * R)
+
+
+def rearrange_gram(X, I, R):
+    """R{X}: the inverse rearrangement, from the I^2 x R^2 layout [i*I + j, r*R + r'] back to
+    the IR x IR layout of vec(W): entry [(i, r), (j, r')]."""
+    return X.reshape(I, I, R, R).transpose(2, 0, 3, 1).reshape(I * R, I * R)
+
+
+def rowkron_times(Phi, K, chunk=2000):
+    """(Phi ⊙ Phi) K, built in row chunks so that Phi ⊙ Phi (N x I^2) is never stored whole."""
+    out = np.empty((Phi.shape[0], K.shape[1]))
+    for s in range(0, Phi.shape[0], chunk):
+        out[s : s + chunk] = dotkron(Phi[s : s + chunk], Phi[s : s + chunk]) @ K
+    return out
+
+
+def rowkron_T_times(Phi, H, chunk=2000):
+    """(Phi ⊙ Phi)^T H, built in row chunks."""
+    out = np.zeros((Phi.shape[1] ** 2, H.shape[1]))
+    for s in range(0, Phi.shape[0], chunk):
+        out += dotkron(Phi[s : s + chunk], Phi[s : s + chunk]).T @ H[s : s + chunk]
+    return out
 
 
 class BTNKM:
@@ -52,7 +87,8 @@ class BTNKM:
         rank_tol=1e-5,
         lower_bound_tol=1e-4,
         verbose=True,
-        cache_cov=True,
+        use_sigma=True,
+        anneal_sweeps=20,
     ):
         """Fit the model.
 
@@ -62,8 +98,13 @@ class BTNKM:
         c0, d0    : Gamma prior of the rank precisions lambda
         g0, h0    : Gamma prior of the feature precisions delta
         rank_tol  : rank components explaining less than this % of the variance are pruned
-        cache_cov : keep each factor's covariance term in memory (D x N x R(R+1)/2 floats)
-                    instead of recomputing it; same results, faster
+        use_sigma : include R{Sigma_k} in the second moments W_k ⊗ W_k + R{Sigma_k}.
+                    False gives the deterministic ALS updates of the factor means.
+        anneal_sweeps : the second moments use W_k ⊗ W_k + beta R{Sigma_k}, with beta growing
+                    linearly from 0 (sweep 0: deterministic ALS) to 1 at sweep `anneal_sweeps`;
+                    after that the updates are the full mean-field updates. This keeps the
+                    variance of the product of the other factors from dominating the first
+                    updates, while the factor means are still random. 0 = full updates from the start.
 
         After training, the model stores:
           rank          final rank R_eff
@@ -89,59 +130,67 @@ class BTNKM:
 
         # Factor means and covariances
         W_D = [np.random.randn(I, R) for _ in range(D)]
-        WSigma_D = [0.1 * np.kron(np.eye(R), np.eye(I)) for _ in range(D)]
+        WSigma_D = [1e-5 * np.kron(np.eye(R), np.eye(I)) for _ in range(D)]
 
         Phi = features(X, M)
-        iu, ju, pos = sym_pairs(I)  # symmetric pairs of kron(phi_n, phi_n)
-        # hadamard_V holds symmetric R x R blocks per sample: keep only the pairs r <= r'
-        ru, rv, posR = sym_pairs(R)
 
-        def cov_term(d):
-            # phi_n^T Sigma_d(r, r') phi_n for all samples n and rank pairs r <= r'
-            return phi_cov_pairs(Phi[d], cov_blocks(WSigma_D[d], I, R, ru, rv), ru.size)
+        def sigma_weight(it):
+            # beta: weight of R{Sigma_k} in the second moments (0 -> 1 over anneal_sweeps)
+            if not use_sigma:
+                return 0.0
+            return 1.0 if anneal_sweeps <= 0 else min(1.0, it / anneal_sweeps)
+
+        def second_moment(k, beta):
+            # (Phi_k ⊙ Phi_k) (W_k ⊗ W_k + beta R{Sigma_k}): N x R^2, row n is the R x R matrix
+            # E[(phi_n^T W_k)^T (phi_n^T W_k)] (row-major, index r*R + r')
+            K = np.kron(W_D[k], W_D[k])
+            if beta > 0:
+                K = K + beta * rearrange_sigma(WSigma_D[k], I, R)
+            return rowkron_times(Phi[k], K)
 
         LB = np.zeros(max_iter)
         rank_history = []
 
-        # Hadamard products over all factors of the second moments and of the means
-        hadamard_V = np.ones((N, ru.size))
-        hadamard_mean = np.ones((N, R))
-        cache = [None] * D  # covariance term of every factor (if cache_cov), so it is not recomputed
-        for d in range(D):
-            term = cov_term(d)
-            if cache_cov:
-                cache[d] = term
-            hadamard_V = hadamard_V * term
-            hadamard_mean = hadamard_mean * (Phi[d] @ W_D[d])
+        # Per-factor moments: first moments Phi_k W_k (N x R), second moments T_k (N x R^2)
+        beta = sigma_weight(0)
+        PW = [Phi[k] @ W_D[k] for k in range(D)]
+        T = [second_moment(k, beta) for k in range(D)]
 
         pbar = trange(max_iter, desc="Training", leave=True, disable=not verbose)
         for it in pbar:
+            if sigma_weight(it) != beta:  # annealing: recompute the second moments with the new beta
+                beta = sigma_weight(it)
+                T = [second_moment(k, beta) for k in range(D)]
 
             # ---- Factor updates q(W^(d)) ----
             for d in range(D):
-                hadamard_mean = safe_division(hadamard_mean, Phi[d] @ W_D[d])
-                hadamard_V = safe_division(hadamard_V, cache[d] if cache_cov else cov_term(d))
-                PhiPhi_V = moments_sym(Phi[d], hadamard_V, hadamard_mean, iu, ju, ru, rv)[pos][:, posR]
-                EGG = np.reshape(
-                    np.transpose(np.reshape(PhiPhi_V, (I, I, R, R), order="F"), axes=(0, 2, 1, 3)),
-                    (I * R, I * R),
-                    order="F",
-                )
-                cy = (Phi[d].T @ (hadamard_mean * np.reshape(y, (-1, 1)))).reshape(-1, 1, order="F")
+                # Hadamard products over the other factors k != d
+                E_g = np.ones((N, R))        # ⊛_{k != d} Phi_k W_k
+                E_ggT = np.ones((N, R * R))  # ⊛_{k != d} (Phi_k ⊙ Phi_k)(W_k ⊗ W_k + R{Sigma_k})
+                for k in range(D):
+                    if k != d:
+                        E_g = E_g * PW[k]
+                        E_ggT = E_ggT * T[k]
 
-                A = tau * EGG + np.kron(lambda_R * np.eye(R), delta[d] * np.eye(I))
-                try:
-                    WSigma_D[d] = np.linalg.inv(A)
+                E_GtG = rearrange_gram(rowkron_T_times(Phi[d], E_ggT), I, R)              # E[G^T G]
+                E_Gty = (Phi[d].T @ (E_g * np.reshape(y, (-1, 1)))).reshape(-1, 1, order="F")  # E[G]^T y
+
+                A = tau * E_GtG + np.kron(lambda_R * np.eye(R), delta[d] * np.eye(I))
+                
+                try:  # inverse via eigendecomposition, with tiny eigenvalues clipped
+                    eigvals, eigvecs = np.linalg.eigh(A)
+                    eigvals = np.maximum(eigvals, 1e-10 * np.maximum(eigvals.max(), 1e-10))
+                    WSigma_D[d] = eigvecs @ np.diag(1.0 / eigvals) @ eigvecs.T
                 except np.linalg.LinAlgError:
-                    WSigma_D[d] = np.linalg.pinv(A)
-                W_D[d] = np.reshape(tau * WSigma_D[d] @ cy, (I, R), order="F")
+                    try:
+                        WSigma_D[d] = np.linalg.pinv(A)
+                    except np.linalg.LinAlgError:
+                        raise RuntimeError(f"INVERSION_FAILED at core d={d}, iter it={it}")
+                W_D[d] = np.reshape(tau * WSigma_D[d] @ E_Gty, (I, R), order="F")
 
-                # add the updated factor back
-                term = cov_term(d)
-                if cache_cov:
-                    cache[d] = term
-                hadamard_V = hadamard_V * term
-                hadamard_mean = hadamard_mean * (Phi[d] @ W_D[d])
+                # moments of the updated factor
+                PW[d] = Phi[d] @ W_D[d]
+                T[d] = second_moment(d, beta)
 
             # ---- Feature precisions q(delta_d) ----
             if delta_update:
@@ -149,7 +198,7 @@ class BTNKM:
                     mtemp = np.diag(W_D[d] @ (lambda_R * np.eye(R)) @ W_D[d].T)
                     vtemp = np.diag(
                         np.reshape(
-                            WSigma_D[d].reshape(I, R, I, R).transpose(0, 2, 1, 3).reshape(I**2, R**2)
+                            rearrange_sigma(WSigma_D[d], I, R)
                             @ (lambda_R * np.eye(R)).ravel(order="F"),
                             (I, I),
                         )
@@ -168,7 +217,7 @@ class BTNKM:
                     vtemp = np.diag(
                         np.reshape(
                             (delta[d] * np.eye(I)).ravel(order="F").T
-                            @ WSigma_D[d].reshape(I, R, I, R).transpose(0, 2, 1, 3).reshape(I**2, R**2),
+                            @ rearrange_sigma(WSigma_D[d], I, R),
                             (R, R),
                         )
                     )
@@ -178,24 +227,29 @@ class BTNKM:
                 lambda_R[lambda_R < 1e-5] = 1e-5
 
             # ---- Noise precision q(tau) ----
-            residual = y - np.sum(hadamard_mean, axis=1)
-            ss_error = np.dot(residual, residual)
-            covariance = np.sum(hadamard_V @ np.where(ru == rv, 1.0, 2.0))  # off-diagonal pairs count twice
+            # Hadamard products over all factors: E[f] per rank component, E[f^2] per rank pair
+            E_f = np.ones((N, R))         # ⊛_k Phi_k W_k
+            E_ff = np.ones((N, R * R))    # ⊛_k (Phi_k ⊙ Phi_k)(W_k ⊗ W_k + R{Sigma_k})
+            for k in range(D):
+                E_f = E_f * PW[k]
+                E_ff = E_ff * T[k]
+            # E||y - f||^2 = y^T y - 2 y^T E[f] + sum_n E[f_n^2]
+            err = y @ y - 2 * y @ np.sum(E_f, axis=1) + np.sum(E_ff)
             if precision_update:
                 a_N = a0 + (N / 2)
-                b_N = b0 + (0.5 * (ss_error + covariance))
+                b_N = b0 + (0.5 * err)
             else:
                 a_N, b_N = a0, b0
             tau = a_N / b_N
 
             # ---- Variational lower bound ----
             LB[it] = self._lower_bound(
-                W_D, WSigma_D, lambda_R, delta, ss_error + covariance , a_N, b_N, b0, c_N, d_N, d0, g_N, h_N, h0, I, R
+                W_D, WSigma_D, lambda_R, delta, err, a_N, b_N, b0, c_N, d_N, d0, g_N, h_N, h0, I, R
             )
 
             # ---- Rank pruning ----
             rankest = R
-            if prune_rank:
+            if it> 4 and prune_rank:
                 Wall = np.vstack(W_D)
                 power = np.diag(Wall.T @ Wall)
                 var_explained = power / np.sum(power) * 100
@@ -211,53 +265,51 @@ class BTNKM:
                         W_D[d] = np.delete(W_D[d], removed, axis=1)
                         WSigma_D[d] = np.delete(WSigma_D[d], rows, axis=1)
                         WSigma_D[d] = np.delete(WSigma_D[d], rows, axis=0)
-                    hadamard_mean = np.delete(hadamard_mean, removed, axis=1)
-                    # drop every rank pair that involves a removed component
-                    keep = ~(np.isin(ru, removed) | np.isin(rv, removed))
-                    hadamard_V = hadamard_V[:, keep]
-                    if cache_cov:
-                        cache = [C[:, keep] for C in cache]
+                    # drop the removed components from the factor moments: their columns of
+                    # Phi_k W_k, and every rank pair (r, r') that involves one of them
+                    kept = ~np.isin(np.arange(R), removed)
+                    PW = [P[:, kept] for P in PW]
+                    T = [T_k[:, np.outer(kept, kept).ravel()] for T_k in T]
                     c0 = c0[:rankest]
                     d0 = d0[:rankest]
                     R = rankest
-                    ru, rv, posR = sym_pairs(R)
             rank_history.append(R)
 
-            # ---- Convergence check ----
-            rel_change = (LB[it] - LB[it - 1]) / LB[2] if it > 2 else np.nan
+            # ---- Convergence check (from 5 iterations after the annealing on) ----
+            rel_change = (LB[it] - LB[it - 1]) / abs(LB[it - 1]) if it > 0 else np.nan
             pbar.set_postfix({"RelChan": f"{rel_change:.2e}", "R": rankest})
-            if it > 5 and abs(rel_change) < lower_bound_tol:
+            if it > anneal_sweeps + 5 and abs(rel_change) < lower_bound_tol:
                 if verbose:
                     print("======= Converged =======")
                 break
 
         # Store the posterior
         self.W_D, self.V, self.a, self.b = W_D, WSigma_D, a_N, b_N
+        self.lambda_R, self.delta, self.tau = lambda_R, delta, tau  # posterior means of the precisions
         self.M = M
+        self.use_sigma = use_sigma
         self.rank = R
         self.rank_history = rank_history
-        self.lower_bound = LB[:it]
+        self.lower_bound = LB[:it+1]
         self.M_eff = np.array(
             [np.sum((np.diag(W @ W.T) / np.sum(np.diag(W @ W.T))) * 100 >= 0.25) for W in W_D]
         )
         return self
 
     @staticmethod
-    def _lower_bound(W_D, WSigma_D, lambda_R, delta, ss_error, a_N, b_N, b0, c_N, d_N, d0, g_N, h_N, h0, I, R):
+    def _lower_bound(W_D, WSigma_D, lambda_R, delta, expected_sq_err, a_N, b_N, b0, c_N, d_N, d0, g_N, h_N, h0, I, R):
         """Variational lower bound (up to constants); only used to check convergence."""
-        t1 = -0.5 * (a_N / b_N) * ss_error
-        # trace(kron(diag(lambda), diag(delta)) (w w^T + Sigma)) only needs the diagonal of (w w^T + Sigma)
+        t1 = -0.5 * (a_N / b_N) * expected_sq_err  # expected_sq_err = E||y - f||^2
         t2 = 0.0
         for d in range(len(W_D)):
             w = W_D[d].ravel(order="F")
             t2 += np.kron(lambda_R, np.ravel(delta[d])) @ (w**2 + np.diag(WSigma_D[d]))
         t2 = -0.5 * t2
-        t3 = 0.5 * np.sum([safelog(np.linalg.slogdet(S)) for S in WSigma_D])
+        t3 = 0.5 * np.sum([np.linalg.slogdet(S)[1] for S in WSigma_D])
         t4 = np.sum(np.multiply(c_N, (1 - safelog(d_N) - (d0 / d_N))))
         t5 = sum(
             np.sum(
-                gammaln(np.array(g_N[d]))
-                + np.array(g_N[d]) * (1 - safelog(np.array(h_N[d])) - (h0 / np.array(h_N[d])))
+                np.array(g_N[d]) * (1 - safelog(np.array(h_N[d])) - (h0 / np.array(h_N[d])))
             )
             for d in range(len(g_N))
         )
@@ -265,34 +317,22 @@ class BTNKM:
         return t1 + t2 + t3 + t4 + t5 + t6
 
     def predict(self, X):
-        """Mean and standard deviation of the Student's-t predictive distribution.
-
-        The predictive has nu = 2 * a_N degrees of freedom; `std` is its standard
-        deviation (not its scale parameter).
+        """Mean and std of the Student's-t predictive of Eq. (3.41):
         """
         Phi = features(X, self.M)
         N, D = X.shape[0], len(self.W_D)
-        R = self.W_D[0].shape[1]
+        PW = [Phi[d] @ self.W_D[d] for d in range(D)]  # W_d^T phi_d(x_i) for every i, (N, R)
+        mean = np.sum(np.prod(PW, axis=0), axis=1)
 
-        PW = [Phi[k] @ self.W_D[k] for k in range(D)]
-        prod = np.ones((N, R))
-        for d in range(D):
-            prod = np.multiply(prod, PW[d])
-        mean = np.sum(prod, axis=1)
-
-        # sum over factors of g_d(x)^T Sigma_d g_d(x), one value per test point
         quad = np.zeros(N)
         for d in range(D):
-            others = np.ones((N, R))
-            for k in range(D):
-                if k != d:
-                    others *= PW[k]
-            g = columnwise_kronecker(others.T, Phi[d].T)
-            quad += np.sum((g.T @ self.V[d]) * g.T, axis=1)
+            h = np.prod([PW[k] for k in range(D) if k != d], axis=0)  # ⊛_{k≠d}, (N, R)
+            g = (h[:, :, None] * Phi[d][:, None, :]).reshape(N, -1)   # h ⊗ phi_d, (N, I R)
+            quad += np.sum((g @ self.V[d]) * g, axis=1)
 
-        S = (2 * self.a / (2 * self.a - 2)) * ((self.b / self.a) + (quad))
-        std = np.sqrt(S)
-        return mean, std
+        S_inv = self.b / self.a + quad
+        nu = 2 * self.a
+        return mean, np.sqrt(nu / (nu - 2) * S_inv)
 
     def mc_predict(self, X, S=3000, y_true=None, seed=None):
         """Monte Carlo check of the predictive distribution.

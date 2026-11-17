@@ -17,6 +17,9 @@ sys.path.insert(0, str(ROOT))
 from btnkm import BTNKM
 from btnkm.data import load_csv, split, student_t_nll
 
+# number of input columns; the next column is the target
+# (Energy: 8 building inputs, heating load as target; cooling load is not used)
+N_INPUTS = {"concrete": 8, "energy": 8, "airfoil": 5}
 DATASETS = ["concrete", "energy", "airfoil"]
 M_MAX = [20, 50]
 R_MAX = 25
@@ -27,7 +30,8 @@ results = {n: {mode: {m: {"metrics": [], "M_eff": []} for m in M_MAX} for mode i
 
 for name in DATASETS:
     data = load_csv(name)
-    X, y = data[:, :-1], data[:, -1]
+    n = N_INPUTS[name]
+    X, y = data[:, :n], data[:, n]
     for trial in range(10):
         X_train, X_test, y_train, y_test = split(X, y, seed=trial)
         y_mean, y_std = y_train.mean(), y_train.std()
@@ -88,5 +92,25 @@ by_label = dict(zip(labels, handles))
 fig.legend(by_label.values(), by_label.keys(), loc="center left", bbox_to_anchor=(0.9, 0.5), fontsize=22, frameon=False)
 plt.tight_layout(rect=[0, 0, 0.88, 1])
 (ROOT / "results").mkdir(exist_ok=True)
-# plt.savefig(ROOT / "results/figure4.pdf", bbox_inches="tight")
+plt.savefig(ROOT / "results/figure4.pdf", bbox_inches="tight")
 plt.show()
+
+
+# Averaged results over 10 trials:
+# Concrete:
+#   M_max =  20, delta on  -> RMSE = 5.1525 ± 0.6017, NLL = 3.0940 ± 0.1714, R = 5.3000 ± 0.4583
+#   M_max =  50, delta on  -> RMSE = 5.3468 ± 0.6633, NLL = 3.0939 ± 0.1690, R = 5.8000 ± 0.6000
+#   M_max =  20, delta off -> RMSE = 5.0276 ± 0.5265, NLL = 3.0355 ± 0.1268, R = 5.2000 ± 0.4000
+#   M_max =  50, delta off -> RMSE = 5.0164 ± 0.6248, NLL = 3.0340 ± 0.1543, R = 6.0000 ± 0.6325
+
+# Energy:
+#   M_max =  20, delta on  -> RMSE = 0.4673 ± 0.0604, NLL = 0.6672 ± 0.1216, R = 3.8000 ± 0.7483
+#   M_max =  50, delta on  -> RMSE = 0.4564 ± 0.0582, NLL = 0.6448 ± 0.1289, R = 3.1000 ± 0.3000
+#   M_max =  20, delta off -> RMSE = 0.4579 ± 0.0629, NLL = 0.6517 ± 0.1198, R = 4.0000 ± 0.6325
+#   M_max =  50, delta off -> RMSE = 0.4459 ± 0.0604, NLL = 0.6249 ± 0.1317, R = 3.1000 ± 0.3000
+
+# Airfoil:
+#   M_max =  20, delta on  -> RMSE = 1.7233 ± 0.1797, NLL = 1.9396 ± 0.1013, R = 9.4000 ± 0.8000
+#   M_max =  50, delta on  -> RMSE = 1.7135 ± 0.1579, NLL = 1.9423 ± 0.0916, R = 7.4000 ± 1.1136
+#   M_max =  20, delta off -> RMSE = 1.7117 ± 0.1524, NLL = 1.9345 ± 0.0926, R = 9.6000 ± 0.6633
+#   M_max =  50, delta off -> RMSE = 1.7067 ± 0.1618, NLL = 1.9420 ± 0.0923, R = 7.7000 ± 0.9000
