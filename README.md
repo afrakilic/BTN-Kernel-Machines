@@ -57,7 +57,9 @@ Run the scripts from any folder; each one prints its table and/or saves its figu
  
 `results/regression_runs.csv` and `results/regression_runtimes.csv` contain the results
 used in the paper, so `table4_table5_summary.py` can be run directly. The GP baseline
-predictions are read from `T-KRR-SIAM/<dataset>_all_runs_gp.csv`.
+predictions are read from `T-KRR-SIAM/<dataset>_all_runs_gp.csv`; to recompute them, run
+`T-KRR-SIAM/uci/experiments/<dataset>.m` in MATLAB (the GPML toolbox is included in
+`T-KRR-SIAM/uci/utils`).
  
 All experiments use fixed random seeds. They were run on a MacBook Pro (Apple M2 Pro, 16 GB,
 macOS 15.5); other operating systems, hardware or library versions may give slightly
@@ -70,19 +72,18 @@ split and cover training and prediction; the Monte Carlo check is not included.
  
 | Data set | RMSE | Analytic NLL | MC NLL | Analytic cov. (%) | MC cov. (%) | Effective rank | Time per split (s) |
 |----------|------|--------------|--------|-------------------|-------------|----------------|--------------------|
-| Airfoil  | 1.721 ± 0.177 | 1.939 ± 0.100 | 1.940 ± 0.100 | 94.8 ± 1.2 | 94.9 ± 1.1 | 9.4 ± 0.8 | 3.34 ± 0.66 |
-| Concrete | 4.977 ± 0.475 | 3.032 ± 0.139 | 3.024 ± 0.129 | 91.4 ± 3.0 | 91.3 ± 2.9 | 8.2 ± 0.6 | 6.20 ± 0.72 |
-| Energy   | 0.413 ± 0.059 | 0.539 ± 0.135 | 0.543 ± 0.134 | 96.1 ± 2.0 | 96.4 ± 2.2 | 6.5 ± 0.7 | 4.23 ± 1.63 |
-| Yacht    | 0.400 ± 0.175 | 0.339 ± 0.390 | 0.408 ± 0.499 | 95.5 ± 3.6 | 95.2 ± 4.4 | 4.6 ± 0.7 | 3.32 ± 2.83 |
- 
+| Airfoil  | 1.723 ± 0.180 | 1.940 ± 0.101 | 1.942 ± 0.103 | 95.0 ± 1.2 | 95.0 ± 1.1 | 9.4 ± 0.8 | 7.51 ± 1.38 |
+| Concrete | 4.969 ± 0.487 | 3.030 ± 0.140 | 3.020 ± 0.126 | 91.3 ± 2.9 | 91.4 ± 2.9 | 8.3 ± 0.5 | 12.57 ± 2.83 |
+| Energy   | 0.412 ± 0.060 | 0.537 ± 0.137 | 0.542 ± 0.137 | 96.4 ± 2.0 | 96.4 ± 2.2 | 6.5 ± 0.7 | 6.30 ± 0.73 |
+| Yacht    | 0.401 ± 0.154 | 0.347 ± 0.350 | 0.378 ± 0.388 | 94.8 ± 4.1 | 94.8 ± 4.1 | 4.6 ± 0.7 | 3.42 ± 0.64 |
+
 | Data set | Misclassification | NLL | Effective rank | Time per split (s) |
 |----------|-------------------|-----|----------------|--------------------|
-| Spambase | 0.094 ± 0.083 | 0.213 ± 0.110 | 2.3 ± 0.8 | 49.54 ± 14.16 |
+| Spambase | 0.113 ± 0.089 | 0.243 ± 0.127 | 2.3 ± 0.9 | 65.78 ± 16.37 |
 | Adult    | 0.145 ± 0.005 | 0.332 ± 0.007 | 4.1 ± 0.8 | 1954.99 ± 386.01 |
  
-On Spambase, two of the ten splits converge to a rank-1 solution, which raises the mean and
-standard deviation of the error; on the remaining eight splits, the average misclassification
-error is 0.053.
+On Spambase, the error varies strongly across the splits, as some splits converge to a
+low-rank solution with a high error.
  
 The GP baseline (RMSE, NLL and coverage) is printed by `table4_table5_summary.py` next to these
 results.
