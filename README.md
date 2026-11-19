@@ -79,11 +79,9 @@ split and cover training and prediction; the Monte Carlo check is not included.
 
 | Data set | Misclassification | NLL | Effective rank | Time per split (s) |
 |----------|-------------------|-----|----------------|--------------------|
-| Spambase | 0.113 ± 0.089 | 0.243 ± 0.127 | 2.3 ± 0.9 | 65.78 ± 16.37 |
+| Spambase | 0.054 ± 0.008 | 0.164 ± 0.0231 | 3.3 ± 0.6 | 118.25 ± 22.40 |
 | Adult    | 0.145 ± 0.005 | 0.332 ± 0.007 | 4.1 ± 0.8 | 1954.99 ± 386.01 |
- 
-On Spambase, the error varies strongly across the splits, as some splits converge to a
-low-rank solution with a high error.
+  
  
 The GP baseline (RMSE, NLL and coverage) is printed by `table4_table5_summary.py` next to these
 results.
