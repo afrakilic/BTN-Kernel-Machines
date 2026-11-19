@@ -22,7 +22,7 @@ from btnkm.data import load_csv, split, classification_nll
 
 # n_features: number of input columns (the next column is the label)
 DATASETS = {
-    # "spambase": dict(n_features=57, M=30, R=10, c0=1e-5),
+    "spambase": dict(n_features=57, M=30, R=25, c0=1e-5),
     "adult":    dict(n_features=96, M=40, R=10, c0=1e-6)
 }
 
@@ -59,11 +59,11 @@ for name in names:
     
 # ANNEALING SWEEPS = 20
 
-# spambase: total runtime for 10 runs: 657.79 s
-# Misclassification: 0.1130 ± 0.0892
-# NLL:               0.2434 ± 0.1265
-# Effective R:       2.3 ± 0.9
-# Time per run:      65.78 ± 16.37 s
+# spambase: total runtime for 10 runs: 1182.54 s
+# Misclassification: 0.0544 ± 0.0084
+# NLL:               0.1637 ± 0.0231
+# Effective R:       3.3 ± 0.6
+# Time per run:      118.25 ± 22.40 s
 
 # adult: total runtime for 10 runs: 19549.88 s
 # Misclassification: 0.1449 ± 0.0052
@@ -73,11 +73,11 @@ for name in names:
 
 # NO ANNEALING 
 
-# spambase: total runtime for 10 runs: 182.77 s
-# Misclassification: 1.0000 ± 0.0000
-# NLL:               0.6931 ± 0.0000
-# Effective R:       10.0 ± 0.0
-# Time per run:      18.28 ± 1.18 s
+# spambase: total runtime for 10 runs: 428.13 s
+# Misclassification: 0.7759 ± 0.3425
+# NLL:               0.6154 ± 0.1199
+# Effective R:       3.5 ± 2.1
+# Time per run:      42.81 ± 10.94 s
 
 # adult: total runtime for 10 runs: 10835.89 s
 # Misclassification: 0.1474 ± 0.0073

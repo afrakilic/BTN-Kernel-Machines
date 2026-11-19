@@ -249,7 +249,7 @@ class BTNKM:
 
             # ---- Rank pruning ----
             rankest = R
-            if it> 4 and prune_rank:
+            if prune_rank:
                 Wall = np.vstack(W_D)
                 power = np.diag(Wall.T @ Wall)
                 var_explained = power / np.sum(power) * 100
