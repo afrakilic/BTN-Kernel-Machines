@@ -84,3 +84,26 @@ for name in names:
 # NLL:               0.3349 ± 0.0076
 # Effective R:       3.4 ± 0.5
 # Time per run:      1083.59 ± 231.68 s
+
+# NO ANNEALING, WITH THE BTT-KM SETTINGS (control experiment for the BTT-KM paper, Sec. 4.2)
+# Purpose: check whether BTN-KM also trains without annealing when it uses the same
+# settings as BTT-KM. This isolates the effect of the TN format (CPD vs TT).
+# Settings: anneal_sweeps=0 and a0=1e-1 (as for BTT-KM on Spambase). The other settings
+# are unchanged and already match BTT-KM: b0=1e-3, c0=1e-5, d0=g0=h0=1e-6, M=30,
+# random N(0, I) initialization, and a warm-up of 5 iterations in which tau, lambda
+# and delta are kept fixed and no ranks are truncated. R=25 matches the size of a
+# BTT-KM core with R_max=5.
+#
+# Result: BTN-KM fails in 7 of the 10 splits.
+#   - 6 runs converge to rank 1 with an error of 0.23-0.28.
+#   - 1 run (run 7) truncates all rank components ("Rank becomes 0").
+#     Its predictions are NaN, so it reports error=1.0 and NLL=ln(2).
+#   - Only 3 runs reach a good solution (rank 2, error 0.04-0.06).
+# With the same settings, BTT-KM trains stably on all splits (error 0.094 ± 0.036).
+# With annealing, BTN-KM reaches 0.054 ± 0.008 (see above).
+#
+# spambase: total runtime for 10 runs: 1787.51 s
+# Misclassification: 0.2464 ± 0.2687
+# NLL:               0.3495 ± 0.1788
+# Effective R:       1.5 ± 0.5
+# Time per run:      178.75 ± 20.10 s
