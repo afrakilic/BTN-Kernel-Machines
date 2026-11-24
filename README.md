@@ -55,9 +55,7 @@ Run the scripts from any folder; each one prints its table and/or saves its figu
 | Tables 4 and 5 (regression) | `python experiments/table4_table5_regression.py`, then `python experiments/table4_table5_summary.py` |
 | Table 4 (classification)    | `python experiments/table4_classification.py spambase` (or `adult`) |
  
-`results/regression_runs.csv` and `results/regression_runtimes.csv` contain the results
-used in the paper, so `table4_table5_summary.py` can be run directly. The GP baseline
-predictions are read from `T-KRR-SIAM/<dataset>_all_runs_gp.csv`; to recompute them, run
+The GP baseline predictions are read from `T-KRR-SIAM/<dataset>_all_runs_gp.csv`; to recompute them, run
 `T-KRR-SIAM/uci/experiments/<dataset>.m` in MATLAB (the GPML toolbox is included in
 `T-KRR-SIAM/uci/utils`).
  
